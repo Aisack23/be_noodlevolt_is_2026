@@ -30,11 +30,128 @@ datasource db {
   provider = "postgresql"
 }
 
+//ENUMS
+
+enum UserRole{
+  CLIENT
+  WAITER
+  COOK
+  BRANCH_ADMIN //Es según la sucursal
+  GENERAL_MANAGER
+  CASHIER
+}
+
+enum TableStatus{
+  AVAILABLE
+  OCCUPIED
+  RESERVED
+  OUT_OF_SERVICE
+  @@map("table_status")
+}
+
+enum DishStatus {
+  AVAILABLE
+  SOLD_OUT
+  DISABLED
+  @@map("dish_status")
+} 
+
+enum AccountStatus{
+  OPEN
+  CLOSED
+  CANCELED
+  @@map("account_status")
+}
+
+enum OrderStatus{
+  PENDING
+  CONFIRMED
+  IN_PREPARATION
+  READY
+  DELIVERED
+  CANCELED
+  @@map("order_status")
+}
+
+enum PaymentStatus {
+  PENDING
+  PAID
+  REJECTED
+  REFUNDED
+  @@map("payment_status")
+}
+
+enum PaymentMethod {
+  CASH
+  CARD
+  BANK_TRANSFER
+  DIGITAL_WALLET
+  OTHER
+  @@map("payment_method")
+}
+
+enum OrderItemStatus {
+  PENDING
+  IN_PREPARATION
+  READY
+  DELIVERED
+  CANCELED
+  @@map("order_item_status")
+}
+
+enum ReservationStatus {
+  PENDING
+  CONFIRMED
+  CANCELED
+  COMPLETED
+  NO_SHOW
+  @@map("reservation_status")
+}
+
+enum InventoryMovementType {
+  PURCHASE
+  CONSUMPTION
+  STOCK_IN
+  STOCK_OUT
+  @@map("inventory_movement_type")
+}
+
+enum RedemptionStatus {
+  PENDING
+  USED
+  CANCELED
+  EXPIRED
+  @@map("redemption_status")
+}
+
+enum PointsMovementType {
+  EARN
+  REDEEM
+  ADJUSTMENT
+  @@map("points_movement_type")
+}
+
+enum FiscalDocumentType {
+  INVOICE
+  TAX_CREDIT
+  RECEIPT
+  OTHER
+  @@map("fiscal_document_type")
+}
+
+//MODELS
 model User {
   id           String   @id @default(uuid()) @db.Uuid
+  name         String
+  lastName     String   @map("last_name")
   email        String   @unique
   passwordHash String   @map("password_hash")
+  role         UserRole @default(CLIENT)   
   isActive     Boolean  @default(true) @map("is_active")
+
+  branchId String? @map("branch_id") @db.Uuid
+  branch   Branch? @relation(fields: [branchId], references: [id], onDelete: SetNull)
+
   createdAt    DateTime @default(now()) @map("created_at")
   updatedAt    DateTime @updatedAt @map("updated_at")
 
