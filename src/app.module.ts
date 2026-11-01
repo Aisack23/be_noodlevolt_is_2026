@@ -9,6 +9,7 @@ import { UsersModule } from '@Users';
 import { validateEnv } from '@Config';
 import { BranchesModule } from '@Branches';
 import {DiningTablesModule} from '@DiningTables';
+import {CatalogModule} from '@Catalog';
 
 @Module({
   imports: [
@@ -24,6 +25,7 @@ import {DiningTablesModule} from '@DiningTables';
     AuthModule,
     BranchesModule,
     DiningTablesModule,
+    CatalogModule,
   ],
   providers: [
     {
