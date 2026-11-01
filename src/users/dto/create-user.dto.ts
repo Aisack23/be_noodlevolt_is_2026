@@ -3,6 +3,27 @@ import { IsString, Matches, MaxLength, MinLength } from 'class-validator';
 import { IsNormalizedEmail } from '@Common/decorators';
 
 export class CreateUserDto {
+  
+  @ApiProperty({
+    description: 'Nombre del usuario.',
+    example: 'Nestor',
+    maxLength: 100,
+  })
+  @IsString()
+  @MinLength(2)
+  @MaxLength(100)
+  name!: string;
+
+  @ApiProperty({
+    description: 'Apellido del usuario.',
+    example: 'Gonzalez',
+    maxLength: 100,
+  })
+  @IsString()
+  @MinLength(2)
+  @MaxLength(100)
+  lastName!: string;
+  
   @ApiProperty({
     description: 'Email del usuario. Se normaliza a minúsculas y sin espacios.',
     example: 'nestor@example.com',
