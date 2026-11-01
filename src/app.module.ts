@@ -15,6 +15,7 @@ import {RecipesModule} from '@Recipes';
 import {AccountsOrdersModule} from '@AccountsOrders';
 import {ReservationsModule} from '@Reservations';
 import {PurchasesModule} from '@Purchase';
+import {PaymentsModule} from '@Payments';
 
 @Module({
   imports: [
@@ -36,6 +37,7 @@ import {PurchasesModule} from '@Purchase';
     ReservationsModule,
     PurchasesModule,
     RecipesModule,
+    PaymentsModule,
   ],
   providers: [
     {
