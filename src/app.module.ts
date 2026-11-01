@@ -10,6 +10,7 @@ import { validateEnv } from '@Config';
 import { BranchesModule } from '@Branches';
 import {DiningTablesModule} from '@DiningTables';
 import {CatalogModule} from '@Catalog';
+import { InventoryModule } from '@Inventory';
 
 @Module({
   imports: [
@@ -26,6 +27,7 @@ import {CatalogModule} from '@Catalog';
     BranchesModule,
     DiningTablesModule,
     CatalogModule,
+    InventoryModule,
   ],
   providers: [
     {
