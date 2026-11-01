@@ -8,6 +8,7 @@ import { PrismaModule } from '@Prisma';
 import { UsersModule } from '@Users';
 import { validateEnv } from '@Config';
 import { BranchesModule } from '@Branches';
+import {DiningTablesModule} from '@DiningTables';
 
 @Module({
   imports: [
@@ -22,6 +23,7 @@ import { BranchesModule } from '@Branches';
     UsersModule,
     AuthModule,
     BranchesModule,
+    DiningTablesModule,
   ],
   providers: [
     {
