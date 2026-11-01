@@ -37,6 +37,8 @@
     // No se usa `baseUrl` (deprecado en TypeScript 6): las rutas son relativas
     // al propio tsconfig.
     "paths": {
+      "@AccountsOrders": ["./src/accounts-orders/index.ts"],
+      "@AccountsOrders/*": ["./src/accounts-orders/*/index.ts"],
       "@Reservations": ["./src/reservations/index.ts"],
       "@Reservations/*": ["./src/reservations/*/index.ts"],
       "@Purchase": ["./src/purchases/index.ts"],

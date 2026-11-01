@@ -11,6 +11,10 @@ import { BranchesModule } from '@Branches';
 import {DiningTablesModule} from '@DiningTables';
 import {CatalogModule} from '@Catalog';
 import { InventoryModule } from '@Inventory';
+import {RecipesModule} from '@Recipes';
+import {AccountsOrdersModule} from '@AccountsOrders';
+import {ReservationsModule} from '@Reservations';
+import {PurchasesModule} from '@Purchase';
 
 @Module({
   imports: [
@@ -28,6 +32,10 @@ import { InventoryModule } from '@Inventory';
     DiningTablesModule,
     CatalogModule,
     InventoryModule,
+    AccountsOrdersModule,
+    ReservationsModule,
+    PurchasesModule,
+    RecipesModule,
   ],
   providers: [
     {
