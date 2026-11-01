@@ -4,6 +4,7 @@ import {
   PaymentRepository,
   PaymentDetailRepository,
   FiscalDocumentRepository,
+  FiscalClientRepository,
 } from '@Payments/repositories';
 
 @Module({
@@ -11,11 +12,13 @@ import {
     PaymentRepository,
     PaymentDetailRepository,
     FiscalDocumentRepository,
+    FiscalClientRepository,
   ],
   exports: [
     PaymentRepository,
     PaymentDetailRepository,
     FiscalDocumentRepository,
+    FiscalClientRepository,
   ],
 })
 export class PaymentsModule {}
