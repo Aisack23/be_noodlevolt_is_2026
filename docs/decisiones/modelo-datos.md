@@ -39,6 +39,10 @@ Se conserva `operationId String @unique @default(uuid())`, obligatorio. El UUID 
 
 ¿Se eliminan CONFIRMED de OrderStatus, DELIVERY de OrderType y CANCELED de AccountStatus y OrderItemStatus para limitar los conjuntos a DB-2.1.1? La decisión sigue abierta; se conservan esos valores. También queda por acordar el uso de RESERVED y OUT_OF_SERVICE en mesas. Esta rama no altera esos conjuntos ni define las reglas de otras épicas.
 
+## Datos iniciales
+
+`npm run db:seed:base` ejecuta el seed independiente del Anexo A. Hace upsert de sucursales por nombre (Centro y Santa Tecla), de seis mesas por `(branchId, number)` y de un usuario por cada rol mediante email. Mesero y cocina pertenecen a Centro; caja, inventario y gerente a Santa Tecla. Cliente y gerente general no tienen sucursal. Cada usuario nuevo incluye nombre, apellido y hash bcrypt de la clave demo. Los upserts no sobrescriben cambios posteriores ni contraseñas. Las escrituras forman una transacción; el seed heredado no se modifica.
+
 ## Reversión
 
 `down.sql` se genera con `prisma migrate diff --from-schema <posterior> --to-schema <anterior> --script` y se completa con los CHECK y protecciones de enums. Rechaza usuarios INVENTORY_MANAGER y mesas NEEDS_CLEANING todavía en uso. En una transacción retira los CHECK y UNIQUE propios, reconstruye los enums anteriores y restaura sus defaults. No convierte ni elimina filas.
