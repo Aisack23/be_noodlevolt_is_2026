@@ -7,6 +7,16 @@ import { HealthModule } from '@Health';
 import { PrismaModule } from '@Prisma';
 import { UsersModule } from '@Users';
 import { validateEnv } from '@Config';
+import { BranchesModule } from '@Branches';
+import {DiningTablesModule} from '@DiningTables';
+import {CatalogModule} from '@Catalog';
+import { InventoryModule } from '@Inventory';
+import {RecipesModule} from '@Recipes';
+import {AccountsOrdersModule} from '@AccountsOrders';
+import {ReservationsModule} from '@Reservations';
+import {PurchasesModule} from '@Purchase';
+import {PaymentsModule} from '@Payments';
+import { CustomerFeaturesModule } from '@CustomerFeatures';
 
 @Module({
   imports: [
@@ -20,6 +30,16 @@ import { validateEnv } from '@Config';
     HealthModule,
     UsersModule,
     AuthModule,
+    BranchesModule,
+    DiningTablesModule,
+    CatalogModule,
+    InventoryModule,
+    AccountsOrdersModule,
+    ReservationsModule,
+    PurchasesModule,
+    RecipesModule,
+    PaymentsModule,
+    CustomerFeaturesModule,
   ],
   providers: [
     {

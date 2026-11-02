@@ -1,0 +1,1 @@
+export * from './dining-table.repository.js'
