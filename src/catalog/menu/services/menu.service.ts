@@ -1,4 +1,4 @@
-import { Inject, Injectable, NotFoundException } from '@nestjs/common';
+import { Inject, Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { MenuResponseDto } from '../dto/index.js';
 import { BranchNotFoundError } from '../errors/index.js';
 import { INGREDIENT_AVAILABILITY_CHECKER } from '../ports/index.js';
@@ -8,6 +8,8 @@ import type { BranchMenu, MenuCategory } from '../types/index.js';
 
 @Injectable()
 export class MenuService {
+  private readonly logger = new Logger(MenuService.name);
+
   constructor(
     @Inject(MenuRepository) private readonly repository: MenuRepository,
     @Inject(INGREDIENT_AVAILABILITY_CHECKER)
@@ -24,15 +26,21 @@ export class MenuService {
       throw error;
     }
 
-    const visibleDishes = menu.dishes.filter(
-      (dish) => dish.status !== 'DISABLED',
-    );
-    const sufficient = await this.ingredients.findSufficientDishIds(
-      branchId,
-      visibleDishes.map((dish) => dish.id),
-    );
+    let sufficient: ReadonlySet<string>;
+    try {
+      sufficient = await this.ingredients.findSufficientDishIds(
+        branchId,
+        menu.dishes.map((dish) => dish.id),
+      );
+    } catch (error) {
+      this.logger.warn(
+        'No se pudo verificar la disponibilidad de insumos.',
+        error,
+      );
+      sufficient = new Set<string>();
+    }
     const categories = new Map<string, MenuCategory>();
-    for (const dish of visibleDishes) {
+    for (const dish of menu.dishes) {
       let category = categories.get(dish.category.id);
       if (!category) {
         category = { ...dish.category, dishes: [] };

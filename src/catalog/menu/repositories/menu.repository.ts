@@ -8,24 +8,21 @@ export class MenuRepository {
   constructor(@Inject(PrismaService) private readonly prisma: PrismaService) {}
 
   async findByBranchId(branchId: string): Promise<BranchMenu> {
-    const branch = await this.prisma.branch.findUnique({
-      where: { id: branchId },
+    const branch = await this.prisma.branch.findFirst({
+      where: { id: branchId, isActive: true },
       select: { id: true, name: true },
     });
     if (!branch) throw new BranchNotFoundError(branchId);
 
     const dishes = await this.prisma.dish.findMany({
-      where: { branchId, status: { not: 'DISABLED' } },
+      where: {
+        branchId,
+        status: { not: 'DISABLED' },
+        category: { isActive: true },
+      },
       include: {
         category: { select: { id: true, name: true, displayOrder: true } },
       },
-      orderBy: [
-        { category: { displayOrder: 'asc' } },
-        { category: { name: 'asc' } },
-        { category: { id: 'asc' } },
-        { name: 'asc' },
-        { id: 'asc' },
-      ],
     });
     return {
       branch,

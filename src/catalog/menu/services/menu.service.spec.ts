@@ -1,5 +1,5 @@
 import { Test } from '@nestjs/testing';
-import { NotFoundException } from '@nestjs/common';
+import { Logger, NotFoundException } from '@nestjs/common';
 import { Prisma } from '@PrismaClient';
 import { BranchNotFoundError } from '../errors/index.js';
 import { INGREDIENT_AVAILABILITY_CHECKER } from '../ports/index.js';
@@ -84,24 +84,20 @@ describe('MenuService', () => {
       expect(result.categorias[0].platillos[0].precio).toBe(expected);
     },
   );
-  it('excluye deshabilitados y categorías que solo los contienen', async () => {
+  it('no repite el filtro de estado que pertenece al repositorio', async () => {
     repository.findByBranchId.mockResolvedValue({
       branch,
       dishes: [
         dish(),
-        dish({
-          id: 'hidden',
-          status: 'DISABLED',
-          category: { id: 'hidden-category', name: 'Oculta', displayOrder: 4 },
-        }),
+        dish({ id: 'hidden', name: 'Oculto', status: 'DISABLED' }),
       ],
     });
     const result = await service.getMenu(branch.id);
     expect(result.categorias).toHaveLength(1);
-    expect(result.categorias[0].platillos).toHaveLength(1);
+    expect(result.categorias[0].platillos).toHaveLength(2);
     expect(ingredients.findSufficientDishIds).toHaveBeenCalledExactlyOnceWith(
       branch.id,
-      ['ramen'],
+      ['ramen', 'hidden'],
     );
   });
   it('mantiene el agotado con disponible falso aunque tenga insumos', async () => {
@@ -194,9 +190,28 @@ describe('MenuService', () => {
     );
     expect(ingredients.findSufficientDishIds).not.toHaveBeenCalled();
   });
-  it('no transforma un fallo del verificador en disponibilidad positiva', async () => {
+  it('ante un fallo del verificador responde 200 con todos no disponibles y registra warn', async () => {
     const failure = new Error('Verificador no disponible');
     ingredients.findSufficientDishIds.mockRejectedValue(failure);
-    await expect(service.getMenu(branch.id)).rejects.toBe(failure);
+    repository.findByBranchId.mockResolvedValue({
+      branch,
+      dishes: [dish(), dish({ id: 'tea', name: 'Té', status: 'SOLD_OUT' })],
+    });
+    const warn = vi
+      .spyOn(Logger.prototype, 'warn')
+      .mockImplementation(() => {});
+    try {
+      const result = await service.getMenu(branch.id);
+      expect(result.categorias[0].platillos).toHaveLength(2);
+      expect(
+        result.categorias[0].platillos.every((item) => !item.disponible),
+      ).toBe(true);
+      expect(warn).toHaveBeenCalledWith(
+        'No se pudo verificar la disponibilidad de insumos.',
+        failure,
+      );
+    } finally {
+      warn.mockRestore();
+    }
   });
 });

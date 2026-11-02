@@ -194,6 +194,23 @@ describe.sequential('BE-1.2.1: menú público contra PostgreSQL', () => {
         expect(body.message).toBe('La sucursal no existe.');
       });
   });
+  it('devuelve 404 para una sucursal inactiva', async () => {
+    await client.query('UPDATE branches SET is_active=false WHERE id=$1', [
+      branches[0],
+    ]);
+    try {
+      await request(app.getHttpServer())
+        .get(`/api/v1/sucursales/${branches[0]}/menu`)
+        .expect(404)
+        .expect(({ body }) => {
+          expect(body.message).toBe('La sucursal no existe.');
+        });
+    } finally {
+      await client.query('UPDATE branches SET is_active=true WHERE id=$1', [
+        branches[0],
+      ]);
+    }
+  });
   it.each(['id-invalido', '123'])('devuelve 400 para el id %s', async (id) => {
     await request(app.getHttpServer())
       .get(`/api/v1/sucursales/${id}/menu`)
@@ -213,6 +230,26 @@ describe.sequential('BE-1.2.1: menú público contra PostgreSQL', () => {
         .flatMap((category) => category.platillos)
         .map((dish) => dish.nombre),
     ).not.toContain('Oculto');
+  });
+  it('omite platillos de categorías inactivas', async () => {
+    await client.query('UPDATE categories SET is_active=false WHERE id=$1', [
+      categories[0],
+    ]);
+    try {
+      const body = await menu();
+      expect(body.categorias.map((category) => category.nombre)).toEqual([
+        categoryNames[1],
+      ]);
+      expect(
+        body.categorias
+          .flatMap((category) => category.platillos)
+          .map((dish) => dish.nombre),
+      ).toEqual(['Gyozas', 'Ramen']);
+    } finally {
+      await client.query('UPDATE categories SET is_active=true WHERE id=$1', [
+        categories[0],
+      ]);
+    }
   });
   it('incluye agotados con disponible falso', async () => {
     const body = await menu();
@@ -321,5 +358,8 @@ describe.sequential('BE-1.2.1: menú público contra PostgreSQL', () => {
     );
     expect(operation?.responses).toHaveProperty('404');
     expect(JSON.stringify(operation?.responses['200'])).toContain('8.50');
+    expect(operation?.description).toContain(
+      'Si falla la verificación de insumos',
+    );
   });
 });
