@@ -20,6 +20,10 @@ import {
       useClass: AlwaysSufficientIngredientChecker,
     },
   ],
-  exports: [CategoryRepository, DishRepository],
+  exports: [
+    CategoryRepository,
+    DishRepository,
+    INGREDIENT_AVAILABILITY_CHECKER,
+  ],
 })
 export class CatalogModule {}
