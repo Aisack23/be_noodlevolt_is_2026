@@ -215,7 +215,7 @@ describe.sequential(
       await db.rejectWrite(
         () =>
           db.client.query(
-            "INSERT INTO orders (id,branch_id,type,operation_id,updated_at) VALUES ($1,$2,'TAKEOUT',$3,now())",
+            "INSERT INTO orders (id,branch_id,type,payment_mode,operation_id,updated_at) VALUES ($1,$2,'TAKEOUT','ONLINE',$3,now())",
             [randomUUID(), db.branches[0], result.rows[0].operation_id],
           ),
         '23505',

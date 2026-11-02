@@ -99,6 +99,13 @@ enum PaymentMethod {
   @@map("payment_method")
 }
 
+enum PaymentMode {
+  ONLINE
+  AT_COUNTER
+
+  @@map("payment_mode")
+}
+
 enum OrderType {
   DINE_IN
   TAKEOUT
@@ -320,6 +327,7 @@ model Order {
   deliveryInstructions String?   @map("delivery_instructions")
 
   status           OrderStatus   @default(PENDING)
+  paymentMode      PaymentMode?  @map("payment_mode")
   operationId      String        @unique @default(uuid()) @map("operation_id") @db.Uuid
   pickupAt         DateTime?     @map("pickup_at") @db.Timestamptz(6)
   createdAt        DateTime      @default(now()) @map("created_at") @db.Timestamptz(6)
