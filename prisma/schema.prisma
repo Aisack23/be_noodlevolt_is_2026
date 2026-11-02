@@ -39,6 +39,7 @@ enum UserRole {
   BRANCH_ADMIN //Es según la sucursal
   GENERAL_MANAGER
   CASHIER
+  INVENTORY_MANAGER
 }
 
 enum TableStatus {
@@ -46,6 +47,7 @@ enum TableStatus {
   OCCUPIED
   RESERVED
   OUT_OF_SERVICE
+  NEEDS_CLEANING
 
   @@map("table_status")
 }
@@ -163,7 +165,7 @@ enum FiscalDocumentType {
 
 model Branch {
   id        String   @id @default(uuid()) @db.Uuid
-  name      String   @db.VarChar(120)
+  name      String   @unique @db.VarChar(120)
   address   String   @db.VarChar(250)
   timeZone  String   @default("America/El_Salvador") @map("time_zone") @db.VarChar(60)
   isActive  Boolean  @default(true) @map("is_active")
