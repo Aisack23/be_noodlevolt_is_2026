@@ -8,15 +8,16 @@ import { PrismaModule } from '@Prisma';
 import { UsersModule } from '@Users';
 import { validateEnv } from '@Config';
 import { BranchesModule } from '@Branches';
-import {DiningTablesModule} from '@DiningTables';
-import {CatalogModule} from '@Catalog';
+import { DiningTablesModule } from '@DiningTables';
+import { CatalogModule } from '@Catalog';
 import { InventoryModule } from '@Inventory';
-import {RecipesModule} from '@Recipes';
-import {AccountsOrdersModule} from '@AccountsOrders';
-import {ReservationsModule} from '@Reservations';
-import {PurchasesModule} from '@Purchase';
-import {PaymentsModule} from '@Payments';
+import { RecipesModule } from '@Recipes';
+import { AccountsOrdersModule } from '@AccountsOrders';
+import { ReservationsModule } from '@Reservations';
+import { PurchasesModule } from '@Purchase';
+import { PaymentsModule } from '@Payments';
 import { CustomerFeaturesModule } from '@CustomerFeatures';
+import { TakeoutOrdersModule } from '@TakeoutOrders';
 
 @Module({
   imports: [
@@ -40,6 +41,7 @@ import { CustomerFeaturesModule } from '@CustomerFeatures';
     RecipesModule,
     PaymentsModule,
     CustomerFeaturesModule,
+    TakeoutOrdersModule,
   ],
   providers: [
     {
