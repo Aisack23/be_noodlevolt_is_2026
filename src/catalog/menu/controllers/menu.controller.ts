@@ -67,7 +67,7 @@ export class MenuController {
     example: {
       statusCode: 400,
       error: 'Bad Request',
-      message: 'El identificador de sucursal debe ser un UUID válido.',
+      message: 'El identificador de sucursal no es válido.',
     },
   })
   @ApiNotFoundResponse({
@@ -83,9 +83,7 @@ export class MenuController {
       'sucursalId',
       new ParseUUIDPipe({
         exceptionFactory: () =>
-          new BadRequestException(
-            'El identificador de sucursal debe ser un UUID válido.',
-          ),
+          new BadRequestException('El identificador de sucursal no es válido.'),
       }),
     )
     branchId: string,
