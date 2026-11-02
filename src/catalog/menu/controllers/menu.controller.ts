@@ -28,7 +28,7 @@ export class MenuController {
   @ApiOperation({
     summary: 'Consulta el menú vigente de una sucursal sin iniciar sesión',
     description:
-      'Excluye deshabilitados y categorías sin platillos visibles. Incluye agotados como no disponibles. Ordena categorías y platillos por nombre; los precios se expresan en dólares con dos decimales.',
+      'Excluye deshabilitados y categorías sin platillos visibles. Incluye agotados como no disponibles. Ordena categorías por display_order, nombre e id; los platillos por nombre e id. Los precios se expresan en dólares con dos decimales.',
   })
   @ApiParam({
     name: 'sucursalId',

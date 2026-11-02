@@ -32,7 +32,9 @@
 }
 ```
 
-Los DTO mapean los nombres del modelo en inglés a claves JSON en español. Los precios mantienen Decimal hasta su conversión con `toFixed(2)`, sin pasar por Number. Las categorías sin platillos visibles se omiten; categorías y platillos se ordenan alfabéticamente en español, con ID como desempate.
+Los DTO mapean los nombres del modelo en inglés a claves JSON en español. Los precios mantienen Decimal hasta su conversión con `toFixed(2)`, sin pasar por Number. Las categorías sin platillos visibles se omiten y se ordenan por displayOrder ascendente, luego nombre en español y luego ID. Los platillos se ordenan por nombre en español e ID. displayOrder es interno; no se agrega a la respuesta JSON.
+
+Category almacena el orden en display_order, entero obligatorio con default 0. El seed configura Entradas=1, Platos fuertes=2, Bebidas=3 y Postres=4, también al actualizar categorías existentes. Las demás categorías conservan 0 hasta asignarles otro valor. La migración nueva y su reversión están documentadas en [modelo-datos.md](modelo-datos.md).
 
 ## Lectura y disponibilidad
 
@@ -57,7 +59,7 @@ El token `INGREDIENT_AVAILABILITY_CHECKER` está en `src/catalog/menu/ports`. Su
 
 ## Registro y alcance
 
-Se reutilizan CatalogModule y los alias existentes. El único archivo previo modificado es `src/catalog/catalog.module.ts`, para registrar el controlador, servicio, repositorio y provider del puerto. No se cambian migraciones, schema, repositorios anteriores, autenticación ni configuración de tests.
+Se reutilizan CatalogModule y los alias existentes. `src/catalog/catalog.module.ts` registra controlador, servicio, repositorio y provider del puerto. El orden de categorías se incorpora al schema con una migración nueva y se configura en el seed de catálogo. No se modifican migraciones anteriores, repositorios previos, autenticación ni configuración de tests.
 
 ## Patrón utilizado
 

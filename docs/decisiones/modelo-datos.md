@@ -98,7 +98,7 @@ npx prisma db execute --file prisma/migrations/20261102025141_catalogo_pedidos_h
 npx prisma db execute --file prisma/migrations/20261102025141_catalogo_pedidos_hu/migration.sql
 ```
 
-## Verificación reproducible
+### Reversión del orden de categorías
 
 Para revertir el orden de categorías, primero se ejecuta su `down.sql`, antes de las migraciones del catálogo y Anexo A. Quita únicamente display_order y pierde sus valores configurados; al reaplicar el SQL se inicializa a 0, y el seed restablece los valores de las cuatro categorías de prueba:
 
@@ -106,6 +106,8 @@ Para revertir el orden de categorías, primero se ejecuta su `down.sql`, antes d
 npx prisma db execute --file prisma/migrations/20261102055433_orden_presentacion_categorias/down.sql
 npx prisma db execute --file prisma/migrations/20261102055433_orden_presentacion_categorias/migration.sql
 ```
+
+## Verificación reproducible
 
 Con DATABASE_URL apuntando a una base de pruebas del PostgreSQL de Docker:
 

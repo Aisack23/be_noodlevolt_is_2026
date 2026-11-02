@@ -16,8 +16,16 @@ export class MenuRepository {
 
     const dishes = await this.prisma.dish.findMany({
       where: { branchId, status: { not: 'DISABLED' } },
-      include: { category: { select: { id: true, name: true } } },
-      orderBy: [{ category: { name: 'asc' } }, { name: 'asc' }, { id: 'asc' }],
+      include: {
+        category: { select: { id: true, name: true, displayOrder: true } },
+      },
+      orderBy: [
+        { category: { displayOrder: 'asc' } },
+        { category: { name: 'asc' } },
+        { category: { id: 'asc' } },
+        { name: 'asc' },
+        { id: 'asc' },
+      ],
     });
     return {
       branch,

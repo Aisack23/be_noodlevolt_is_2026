@@ -8,7 +8,7 @@ export interface MenuDish {
   description: string | null;
   price: MenuPrice;
   status: 'AVAILABLE' | 'SOLD_OUT' | 'DISABLED';
-  category: { id: string; name: string };
+  category: { id: string; name: string; displayOrder: number };
 }
 
 export interface BranchMenu {
@@ -23,6 +23,7 @@ export interface AvailableMenuDish extends MenuDish {
 export interface MenuCategory {
   id: string;
   name: string;
+  displayOrder: number;
   dishes: AvailableMenuDish[];
 }
 

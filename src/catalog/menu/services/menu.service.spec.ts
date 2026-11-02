@@ -30,7 +30,7 @@ describe('MenuService', () => {
       description: null,
       price: new Prisma.Decimal('8.5'),
       status: 'AVAILABLE',
-      category: { id: 'main', name: 'Platos fuertes' },
+      category: { id: 'main', name: 'Platos fuertes', displayOrder: 2 },
       ...overrides,
     };
   }
@@ -92,7 +92,7 @@ describe('MenuService', () => {
         dish({
           id: 'hidden',
           status: 'DISABLED',
-          category: { id: 'hidden-category', name: 'Oculta' },
+          category: { id: 'hidden-category', name: 'Oculta', displayOrder: 4 },
         }),
       ],
     });
@@ -130,31 +130,56 @@ describe('MenuService', () => {
       ['ramen', 'tea'],
     );
   });
-  it('ordena por categoría y luego por nombre sin mutar los datos leídos', async () => {
+  it('prioriza displayOrder y ordena platillos por nombre sin mutar los datos leídos', async () => {
     const dishes = [
       dish({
         id: 'z',
         name: 'Zumo',
-        category: { id: 'drinks', name: 'Bebidas' },
+        category: { id: 'drinks', name: 'Bebidas', displayOrder: 3 },
       }),
       dish(),
       dish({
         id: 'a',
         name: 'Agua',
-        category: { id: 'drinks', name: 'Bebidas' },
+        category: { id: 'drinks', name: 'Bebidas', displayOrder: 3 },
       }),
     ];
     repository.findByBranchId.mockResolvedValue({ branch, dishes });
     const result = await service.getMenu(branch.id);
     expect(result.categorias.map((category) => category.nombre)).toEqual([
-      'Bebidas',
       'Platos fuertes',
+      'Bebidas',
     ]);
-    expect(result.categorias[0].platillos.map((item) => item.nombre)).toEqual([
+    expect(result.categorias[1].platillos.map((item) => item.nombre)).toEqual([
       'Agua',
       'Zumo',
     ]);
     expect(dishes.map((item) => item.id)).toEqual(['z', 'ramen', 'a']);
+  });
+  it('desempata categorías de igual orden por nombre y luego por id', async () => {
+    repository.findByBranchId.mockResolvedValue({
+      branch,
+      dishes: [
+        dish({
+          id: 'one',
+          category: { id: 'b', name: 'Entradas', displayOrder: 1 },
+        }),
+        dish({
+          id: 'two',
+          category: { id: 'a', name: 'Entradas', displayOrder: 1 },
+        }),
+        dish({
+          id: 'three',
+          category: { id: 'z', name: 'Bebidas', displayOrder: 1 },
+        }),
+      ],
+    });
+    const result = await service.getMenu(branch.id);
+    expect(result.categorias.map((category) => category.id)).toEqual([
+      'z',
+      'a',
+      'b',
+    ]);
   });
   it('devuelve categorías vacías para una sucursal sin platillos visibles', async () => {
     repository.findByBranchId.mockResolvedValue({ branch, dishes: [] });

@@ -43,7 +43,10 @@ export class MenuService {
         available: dish.status === 'AVAILABLE' && sufficient.has(dish.id),
       });
     }
-    const orderedCategories = [...categories.values()].sort(compareNames);
+    const orderedCategories = [...categories.values()].sort(
+      (left, right) =>
+        left.displayOrder - right.displayOrder || compareNames(left, right),
+    );
     for (const category of orderedCategories)
       category.dishes.sort(compareNames);
     return MenuResponseDto.fromMenu({

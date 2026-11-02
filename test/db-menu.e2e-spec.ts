@@ -14,6 +14,7 @@ import type { IngredientAvailabilityChecker } from '../src/catalog/menu/ports/in
 describe.sequential('BE-1.2.1: menú público contra PostgreSQL', () => {
   const branches = [randomUUID(), randomUUID(), randomUUID()];
   const categories = [randomUUID(), randomUUID(), randomUUID(), randomUUID()];
+  const categoryOrders = [3, 2, 4, 1];
   const suffix = randomUUID();
   const categoryNames = [
     `A Bebidas ${suffix}`,
@@ -57,10 +58,10 @@ describe.sequential('BE-1.2.1: menú público contra PostgreSQL', () => {
         );
       }
       for (const [index, id] of categories.entries()) {
-        await client.query('INSERT INTO categories (id,name) VALUES ($1,$2)', [
-          id,
-          categoryNames[index],
-        ]);
+        await client.query(
+          'INSERT INTO categories (id,name,display_order) VALUES ($1,$2,$3)',
+          [id, categoryNames[index], categoryOrders[index]],
+        );
       }
       const dishes = [
         {
@@ -171,7 +172,11 @@ describe.sequential('BE-1.2.1: menú público contra PostgreSQL', () => {
       nombre: `Menu 0 ${suffix}`,
     });
     expect(Object.keys(body).sort()).toEqual(['categorias', 'sucursal']);
-    expect(body.categorias[0].platillos[0]).toEqual(
+    expect(
+      body.categorias
+        .flatMap((category) => category.platillos)
+        .find((dish) => dish.nombre === 'Agua'),
+    ).toEqual(
       expect.objectContaining({
         id: expect.any(String),
         nombre: 'Agua',
@@ -199,9 +204,10 @@ describe.sequential('BE-1.2.1: menú público contra PostgreSQL', () => {
   });
   it('omite deshabilitados y categorías sin platillos visibles', async () => {
     const body = await menu();
-    expect(body.categorias.map((category) => category.nombre)).toEqual(
-      categoryNames.slice(0, 2),
-    );
+    expect(body.categorias.map((category) => category.nombre)).toEqual([
+      categoryNames[1],
+      categoryNames[0],
+    ]);
     expect(
       body.categorias
         .flatMap((category) => category.platillos)
@@ -231,19 +237,35 @@ describe.sequential('BE-1.2.1: menú público contra PostgreSQL', () => {
     expect(second.find((dish) => dish.nombre === 'Zumo')?.precio).toBe('4.75');
     expect(second.map((dish) => dish.nombre)).not.toContain('Gyozas');
   });
-  it('ordena categorías y platillos por nombre', async () => {
+  it('prioriza display_order de categorías y ordena platillos por nombre', async () => {
     const body = await menu();
-    expect(body.categorias.map((category) => category.nombre)).toEqual(
-      categoryNames.slice(0, 2),
-    );
+    expect(body.categorias.map((category) => category.nombre)).toEqual([
+      categoryNames[1],
+      categoryNames[0],
+    ]);
     expect(
       body.categorias.map((category) =>
         category.platillos.map((dish) => dish.nombre),
       ),
     ).toEqual([
-      ['Agua', 'Zumo'],
       ['Gyozas', 'Ramen'],
+      ['Agua', 'Zumo'],
     ]);
+  });
+  it('desempata categorías de igual display_order por nombre', async () => {
+    try {
+      await client.query('UPDATE categories SET display_order=2 WHERE id=$1', [
+        categories[0],
+      ]);
+      expect(
+        (await menu()).categorias.map((category) => category.nombre),
+      ).toEqual(categoryNames.slice(0, 2));
+    } finally {
+      await client.query('UPDATE categories SET display_order=$1 WHERE id=$2', [
+        categoryOrders[0],
+        categories[0],
+      ]);
+    }
   });
   it('distingue una sucursal vacía de una inexistente', async () => {
     expect((await menu(branches[2])).categorias).toEqual([]);
