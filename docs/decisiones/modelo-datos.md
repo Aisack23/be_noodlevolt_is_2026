@@ -33,17 +33,18 @@ La migración rechaza datos anteriores inválidos; no reasigna personas ni renom
 
 ## Catálogo y pedidos: DB-1.1.1 y DB-2.1.1
 
-| Modelo / campo       | Restricción y justificación                                                         |
-| -------------------- | ----------------------------------------------------------------------------------- |
-| Dish.name            | VARCHAR(100), según DB-1.1.1                                                        |
-| Dish.description     | VARCHAR(300), opcional                                                              |
-| Dish.price           | NUMERIC(8,2) y CHECK `dishes_price_check`: mayor que cero                           |
-| Dish.branchId        | UUID obligatorio, FK `dishes_branch_id_fkey` a branches con DELETE RESTRICT         |
-| Dish.branchId + name | UNIQUE `dishes_branch_id_name_key`: permite el mismo nombre en sucursales distintas |
-| OrderItem.unitPrice  | NUMERIC(8,2), snapshot del precio al pedir                                          |
-| OrderItem.quantity   | CHECK `order_items_quantity_check`: entero de 1 a 20, inclusivo                     |
-| OrderItem.note       | VARCHAR(200) opcional; el tipo limita la longitud, sin CHECK adicional              |
-| Order.status         | Se agrega PENDING_PAYMENT; el default sigue siendo PENDING                          |
+| Modelo / campo        | Restricción y justificación                                                         |
+| --------------------- | ----------------------------------------------------------------------------------- |
+| Category.displayOrder | INTEGER NOT NULL DEFAULT 0, columna display_order: orden de presentación del menú   |
+| Dish.name             | VARCHAR(100), según DB-1.1.1                                                        |
+| Dish.description      | VARCHAR(300), opcional                                                              |
+| Dish.price            | NUMERIC(8,2) y CHECK `dishes_price_check`: mayor que cero                           |
+| Dish.branchId         | UUID obligatorio, FK `dishes_branch_id_fkey` a branches con DELETE RESTRICT         |
+| Dish.branchId + name  | UNIQUE `dishes_branch_id_name_key`: permite el mismo nombre en sucursales distintas |
+| OrderItem.unitPrice   | NUMERIC(8,2), snapshot del precio al pedir                                          |
+| OrderItem.quantity    | CHECK `order_items_quantity_check`: entero de 1 a 20, inclusivo                     |
+| OrderItem.note        | VARCHAR(200) opcional; el tipo limita la longitud, sin CHECK adicional              |
+| Order.status          | Se agrega PENDING_PAYMENT; el default sigue siendo PENDING                          |
 
 La pertenencia de platillos a sucursal permite validar el catálogo y evitar pedidos con platillos de otra sucursal. La FK conserva la sucursal mientras exista un platillo que la use. Como ajuste mínimo exigido por el schema, `CreateDishData` agrega únicamente `branchId: string`, correspondiente a `Branch.id String @db.Uuid`; permite compilar la creación existente con el nuevo campo obligatorio. No cambia consultas ni lógica del repositorio. El filtrado por sucursal y las reglas de BE-1.1.1 siguen perteneciendo a esa task.
 
@@ -73,7 +74,9 @@ Se conserva `operationId String @unique @default(uuid())`, obligatorio. El UUID 
 
 `npm run db:seed:base` ejecuta el seed independiente del Anexo A. Hace upsert de sucursales por nombre (Centro y Santa Tecla), de seis mesas por `(branchId, number)` y de un usuario por cada rol mediante email. Mesero y cocina pertenecen a Centro; caja, inventario y gerente a Santa Tecla. Cliente y gerente general no tienen sucursal. Cada usuario nuevo incluye nombre, apellido y hash bcrypt de la clave demo. Los upserts no sobrescriben cambios posteriores ni contraseñas. Las escrituras forman una transacción; el seed heredado no se modifica.
 
-`npm run db:seed:catalog` ejecuta primero el seed base y agrega categorías Entradas, Platos fuertes, Bebidas y Postres mediante upsert por nombre, y ocho platillos por sucursal mediante `(branchId, name)`. Son dos platillos por categoría con precios positivos expresados como strings decimales. Las inserciones de catálogo forman una transacción; los upserts preservan precios y estados modificados después. El seed base sigue siendo independiente del catálogo.
+`npm run db:seed:catalog` ejecuta primero el seed base y agrega categorías Entradas, Platos fuertes, Bebidas y Postres mediante upsert por nombre, y ocho platillos por sucursal mediante `(branchId, name)`. Asigna y actualiza su displayOrder a 1, 2, 3 y 4 respectivamente, incluso en categorías existentes. Son dos platillos por categoría con precios positivos expresados como strings decimales. Las inserciones de catálogo forman una transacción; los upserts preservan precios y estados de platillos modificados después. El seed base sigue siendo independiente del catálogo.
+
+El orden de categorías del menú es displayOrder, nombre e ID como desempates. El campo no es único ni tiene CHECK de positividad: categorías adicionales pueden conservar el default 0 y compartir orden. La migración `20261102055433_orden_presentacion_categorias` agrega el campo sin modificar migraciones anteriores; las categorías existentes reciben 0 hasta ejecutar el seed o asignarles un orden explícito.
 
 ## Reversión
 
@@ -93,6 +96,15 @@ La migración de catálogo/pedidos se revierte antes que la del Anexo A. Su down
 ```powershell
 npx prisma db execute --file prisma/migrations/20261102025141_catalogo_pedidos_hu/down.sql
 npx prisma db execute --file prisma/migrations/20261102025141_catalogo_pedidos_hu/migration.sql
+```
+
+### Reversión del orden de categorías
+
+Para revertir el orden de categorías, primero se ejecuta su `down.sql`, antes de las migraciones del catálogo y Anexo A. Quita únicamente display_order y pierde sus valores configurados; al reaplicar el SQL se inicializa a 0, y el seed restablece los valores de las cuatro categorías de prueba:
+
+```powershell
+npx prisma db execute --file prisma/migrations/20261102055433_orden_presentacion_categorias/down.sql
+npx prisma db execute --file prisma/migrations/20261102055433_orden_presentacion_categorias/migration.sql
 ```
 
 ## Verificación reproducible

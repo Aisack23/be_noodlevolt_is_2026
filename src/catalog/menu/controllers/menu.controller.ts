@@ -1,0 +1,93 @@
+import {
+  BadRequestException,
+  Controller,
+  Get,
+  Inject,
+  Param,
+  ParseUUIDPipe,
+} from '@nestjs/common';
+import {
+  ApiBadRequestResponse,
+  ApiNotFoundResponse,
+  ApiOkResponse,
+  ApiOperation,
+  ApiParam,
+  ApiTags,
+} from '@nestjs/swagger';
+import { Public } from '@Auth/decorators';
+import { MenuResponseDto } from '../dto/index.js';
+import { MenuService } from '../services/index.js';
+
+@ApiTags('Menú público')
+@Controller('sucursales')
+export class MenuController {
+  constructor(@Inject(MenuService) private readonly service: MenuService) {}
+
+  @Public()
+  @Get(':sucursalId/menu')
+  @ApiOperation({
+    summary: 'Consulta el menú vigente de una sucursal sin iniciar sesión',
+    description:
+      'Excluye sucursales y categorías inactivas, deshabilitados y categorías sin platillos visibles. Incluye agotados como no disponibles. Si falla la verificación de insumos, todos los platillos se muestran como no disponibles. Ordena categorías por display_order, nombre e id; los platillos por nombre e id. Los precios se expresan en dólares con dos decimales.',
+  })
+  @ApiParam({
+    name: 'sucursalId',
+    type: String,
+    format: 'uuid',
+    description: 'UUID de la sucursal.',
+  })
+  @ApiOkResponse({
+    description:
+      'Sucursal activa y categorías activas con sus platillos visibles. Una sucursal sin platillos visibles tiene categorias: []. Si falla el verificador de insumos, todos tienen disponible=false.',
+    type: MenuResponseDto,
+    example: {
+      sucursal: {
+        id: '10000000-0000-4000-8000-000000000001',
+        nombre: 'NoodleVolt Centro',
+      },
+      categorias: [
+        {
+          id: '20000000-0000-4000-8000-000000000001',
+          nombre: 'Platos fuertes',
+          platillos: [
+            {
+              id: '30000000-0000-4000-8000-000000000001',
+              nombre: 'Ramen de pollo',
+              descripcion: 'Con pollo y vegetales.',
+              precio: '8.50',
+              disponible: true,
+            },
+          ],
+        },
+      ],
+    },
+  })
+  @ApiBadRequestResponse({
+    description: 'El identificador no tiene formato UUID válido.',
+    example: {
+      statusCode: 400,
+      error: 'Bad Request',
+      message: 'El identificador de sucursal no es válido.',
+    },
+  })
+  @ApiNotFoundResponse({
+    description: 'La sucursal no existe o está inactiva.',
+    example: {
+      statusCode: 404,
+      error: 'Not Found',
+      message: 'La sucursal no existe.',
+    },
+  })
+  getMenu(
+    @Param(
+      'sucursalId',
+      new ParseUUIDPipe({
+        exceptionFactory: () =>
+          new BadRequestException('El identificador de sucursal no es válido.'),
+      }),
+    )
+    branchId: string,
+  ): Promise<MenuResponseDto> {
+    return this.service.getMenu(branchId);
+  }
+}

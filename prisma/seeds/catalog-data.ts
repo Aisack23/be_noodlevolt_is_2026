@@ -1,7 +1,12 @@
 import { PrismaClient } from '../../src/generated/prisma/client.js';
 import { BASE_BRANCHES } from './base-data.js';
 
-const CATEGORIES = ['Entradas', 'Platos fuertes', 'Bebidas', 'Postres'];
+const CATEGORIES = [
+  { name: 'Entradas', displayOrder: 1 },
+  { name: 'Platos fuertes', displayOrder: 2 },
+  { name: 'Bebidas', displayOrder: 3 },
+  { name: 'Postres', displayOrder: 4 },
+];
 const DISHES = [
   { name: 'Rollitos primavera', category: 'Entradas', price: '4.50' },
   { name: 'Gyozas de vegetales', category: 'Entradas', price: '5.00' },
@@ -16,11 +21,11 @@ const DISHES = [
 export async function seedCatalogData(prisma: PrismaClient) {
   await prisma.$transaction(async (tx) => {
     const categories = new Map<string, string>();
-    for (const name of CATEGORIES) {
+    for (const { name, displayOrder } of CATEGORIES) {
       const category = await tx.category.upsert({
         where: { name },
-        update: {},
-        create: { name },
+        update: { displayOrder },
+        create: { name, displayOrder },
       });
       categories.set(name, category.id);
     }
