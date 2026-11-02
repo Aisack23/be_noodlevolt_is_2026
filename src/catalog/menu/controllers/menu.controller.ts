@@ -28,7 +28,7 @@ export class MenuController {
   @ApiOperation({
     summary: 'Consulta el menú vigente de una sucursal sin iniciar sesión',
     description:
-      'Excluye deshabilitados y categorías sin platillos visibles. Incluye agotados como no disponibles. Ordena categorías por display_order, nombre e id; los platillos por nombre e id. Los precios se expresan en dólares con dos decimales.',
+      'Excluye sucursales y categorías inactivas, deshabilitados y categorías sin platillos visibles. Incluye agotados como no disponibles. Si falla la verificación de insumos, todos los platillos se muestran como no disponibles. Ordena categorías por display_order, nombre e id; los platillos por nombre e id. Los precios se expresan en dólares con dos decimales.',
   })
   @ApiParam({
     name: 'sucursalId',
@@ -38,7 +38,7 @@ export class MenuController {
   })
   @ApiOkResponse({
     description:
-      'Sucursal y categorías con sus platillos visibles. Una sucursal sin platillos visibles tiene categorias: [].',
+      'Sucursal activa y categorías activas con sus platillos visibles. Una sucursal sin platillos visibles tiene categorias: []. Si falla el verificador de insumos, todos tienen disponible=false.',
     type: MenuResponseDto,
     example: {
       sucursal: {
@@ -71,7 +71,7 @@ export class MenuController {
     },
   })
   @ApiNotFoundResponse({
-    description: 'La sucursal no existe.',
+    description: 'La sucursal no existe o está inactiva.',
     example: {
       statusCode: 404,
       error: 'Not Found',

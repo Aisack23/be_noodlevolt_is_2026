@@ -6,7 +6,7 @@
 
 - 200: sucursal existente, incluso si no tiene platillos visibles (`categorias: []`).
 - 400: identificador con formato inválido; mensaje «El identificador de sucursal no es válido.», generado por exceptionFactory de ParseUUIDPipe.
-- 404: UUID válido de sucursal inexistente; mensaje «La sucursal no existe.».
+- 404: UUID válido de sucursal inexistente o inactiva; mensaje «La sucursal no existe.».
 
 ```json
 {
@@ -38,9 +38,11 @@ Category almacena el orden en display_order, entero obligatorio con default 0. E
 
 ## Lectura y disponibilidad
 
-El repositorio usa consultas tipadas de Prisma: `Branch.findUnique` y `Dish.findMany`, filtrando branchId y status distinto de DISABLED, con include de categoría. No usa SQL crudo ni consultas dentro de bucles. Prisma puede resolver el include mediante una consulta agrupada para las categorías; no se realiza una lectura por platillo. La sucursal se consulta por separado para distinguir inexistente de menú vacío.
+El repositorio usa consultas tipadas de Prisma: `Branch.findFirst` con `isActive=true` y `Dish.findMany`, filtrando `branchId`, `status` distinto de DISABLED y `category.isActive=true`, con include de categoría. No usa SQL crudo ni consultas dentro de bucles. Prisma puede resolver el include mediante una consulta agrupada para las categorías; no se realiza una lectura por platillo. La sucursal se consulta por separado para distinguir inexistente de menú vacío. El filtro de visibilidad vive solo en el repositorio; el servicio ordena los platillos y categorías por displayOrder, nombre con `localeCompare('es')` e ID.
 
 DISABLED se excluye. SOLD_OUT permanece visible con disponible=false. AVAILABLE es disponible solo si el verificador de insumos devuelve su ID. Cada solicitud consulta el estado y precio actuales; esta ruta no reserva ni descuenta inventario y no cambia estados persistidos. Al confirmar un pedido deben revalidarse insumos y precios.
+
+**Decisión del equipo:** la HU no define la visibilidad de sucursales y categorías inactivas. Una sucursal con `isActive=false` responde 404 con «La sucursal no existe.»; los platillos de categorías inactivas no aparecen. Si el verificador de insumos falla, el servicio registra el error con `Logger.warn` y responde 200 con todos los platillos visibles en `disponible=false`.
 
 ## Puerto de E5
 
@@ -53,9 +55,11 @@ interface IngredientAvailabilityChecker {
 }
 ```
 
-Se invoca una sola vez con los IDs visibles de esa sucursal, también si la lista está vacía. El resultado identifica cuáles pueden prepararse con una porción cada uno, evaluados individualmente. No representa un pedido que consuma todos los platillos simultáneamente: agregar los requerimientos de todo el menú produciría disponibilidades incorrectas. Los IDs ausentes son insuficientes; un fallo del verificador se propaga, no confirma disponibilidad.
+Se invoca una sola vez con los IDs visibles de esa sucursal, también si la lista está vacía. El resultado identifica cuáles pueden prepararse con una porción cada uno, evaluados individualmente. No representa un pedido que consuma todos los platillos simultáneamente: agregar los requerimientos de todo el menú produciría disponibilidades incorrectas. Los IDs ausentes son insuficientes; si falla el verificador, ninguno se confirma como disponible.
 
-El token `INGREDIENT_AVAILABILITY_CHECKER` está en `src/catalog/menu/ports`. Su provider actual, `AlwaysSufficientIngredientChecker`, es temporal, devuelve todos los IDs y está marcado `// TODO(E5) BE-5.1.1`. Hasta reemplazarlo, el menú no detecta faltantes reales de inventario. Diego puede cambiar únicamente el `useClass` del provider en CatalogModule por su implementación de BE-5.1.1; el contrato, servicio y controlador se mantienen.
+El token `INGREDIENT_AVAILABILITY_CHECKER` está en `src/catalog/menu/ports`. Su provider actual, `AlwaysSufficientIngredientChecker`, es temporal, devuelve todos los IDs y está marcado `// TODO(E5) BE-5.1.1`. Hasta reemplazarlo, el menú no detecta faltantes reales de inventario.
+
+Para conectar BE-5.1.1, `InventoryModule` debe registrar y exportar un provider concreto `InventoryAvailabilityChecker` que implemente `IngredientAvailabilityChecker` y haga la verificación por lote. `CatalogModule` debe importar `InventoryModule` y sustituir el provider temporal por `{ provide: INGREDIENT_AVAILABILITY_CHECKER, useExisting: InventoryAvailabilityChecker }`. `useExisting` reutiliza la instancia exportada por E5; el servicio y el controlador de menú no cambian.
 
 ## Registro y alcance
 
