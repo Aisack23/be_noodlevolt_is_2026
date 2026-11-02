@@ -45,7 +45,7 @@ La migración rechaza datos anteriores inválidos; no reasigna personas ni renom
 | OrderItem.note       | VARCHAR(200) opcional; el tipo limita la longitud, sin CHECK adicional              |
 | Order.status         | Se agrega PENDING_PAYMENT; el default sigue siendo PENDING                          |
 
-La pertenencia de platillos a sucursal permite validar el catálogo y evitar pedidos con platillos de otra sucursal. La FK conserva la sucursal mientras exista un platillo que la use. Como ajuste mínimo exigido por el schema, `CreateDishData` agrega únicamente `branchId: string`, correspondiente a `Branch.id String @db.Uuid`; permite compilar la creación existente con el nuevo campo obligatorio. No cambia consultas ni lógica del repositorio. Este ajuste debe explicarse a Diego en el PR; el filtrado por sucursal y las reglas de BE-1.1.1 siguen perteneciendo a esa task.
+La pertenencia de platillos a sucursal permite validar el catálogo y evitar pedidos con platillos de otra sucursal. La FK conserva la sucursal mientras exista un platillo que la use. Como ajuste mínimo exigido por el schema, `CreateDishData` agrega únicamente `branchId: string`, correspondiente a `Branch.id String @db.Uuid`; permite compilar la creación existente con el nuevo campo obligatorio. No cambia consultas ni lógica del repositorio. El filtrado por sucursal y las reglas de BE-1.1.1 siguen perteneciendo a esa task.
 
 | Enum            | Inglés                                        | HU                                             |
 | --------------- | --------------------------------------------- | ---------------------------------------------- |
