@@ -25,19 +25,19 @@ API REST construida con **NestJS 12**, **Prisma 7** y **PostgreSQL 18**, con aut
 
 ## Stack técnico
 
-| Tecnología                                                      | Versión | Para qué se usa                                                                 |
-| --------------------------------------------------------------- | ------- | ------------------------------------------------------------------------------- |
-| [NestJS](https://nestjs.com)                                    | 12      | Framework HTTP. Módulos, inyección de dependencias, guards y pipes              |
-| [TypeScript](https://www.typescriptlang.org)                    | 6       | Tipado estático. El proyecto es **ESM puro** (`"type": "module"`)               |
-| [Prisma ORM](https://www.prisma.io)                             | 7       | ORM y motor de migraciones versionadas                                          |
-| [PostgreSQL](https://www.postgresql.org)                        | 18      | Base de datos relacional                                                        |
-| [@nestjs/jwt](https://github.com/nestjs/jwt)                    | 12      | Firma y verificación de los JWT de acceso                                       |
-| [bcrypt](https://github.com/kelektiv/node.bcrypt.js)            | 6       | Hasheo de contraseñas (cost 12 por defecto)                                     |
-| [class-validator](https://github.com/typestack/class-validator) | 0.15    | Validación declarativa de los DTO de entrada                                    |
-| [Swagger](https://docs.nestjs.com/openapi/introduction)         | 12      | Documentación OpenAPI en `/api/docs`                                            |
-| [tsc-alias](https://github.com/justkey007/tsc-alias)            | 1       | Reescribe los path aliases del JS compilado (ver [Path aliases](#path-aliases)) |
-| [Vitest](https://vitest.dev)                                    | 4       | Tests unitarios y e2e                                                           |
-| [oxlint](https://oxc.rs)                                        | 1       | Linter (con chequeos type-aware)                                                |
+| Tecnología | Versión | Para qué se usa |
+|---|---|---|
+| [NestJS](https://nestjs.com) | 12 | Framework HTTP. Módulos, inyección de dependencias, guards y pipes |
+| [TypeScript](https://www.typescriptlang.org) | 6 | Tipado estático. El proyecto es **ESM puro** (`"type": "module"`) |
+| [Prisma ORM](https://www.prisma.io) | 7 | ORM y motor de migraciones versionadas |
+| [PostgreSQL](https://www.postgresql.org) | 18 | Base de datos relacional |
+| [@nestjs/jwt](https://github.com/nestjs/jwt) | 12 | Firma y verificación de los JWT de acceso |
+| [bcrypt](https://github.com/kelektiv/node.bcrypt.js) | 6 | Hasheo de contraseñas (cost 12 por defecto) |
+| [class-validator](https://github.com/typestack/class-validator) | 0.15 | Validación declarativa de los DTO de entrada |
+| [Swagger](https://docs.nestjs.com/openapi/introduction) | 12 | Documentación OpenAPI en `/api/docs` |
+| [tsc-alias](https://github.com/justkey007/tsc-alias) | 1 | Reescribe los path aliases del JS compilado (ver [Path aliases](#path-aliases)) |
+| [Vitest](https://vitest.dev) | 4 | Tests unitarios y e2e |
+| [oxlint](https://oxc.rs) | 1 | Linter (con chequeos type-aware) |
 
 ### Dos detalles del stack que conviene saber
 
@@ -45,10 +45,10 @@ API REST construida con **NestJS 12**, **Prisma 7** y **PostgreSQL 18**, con aut
 
 ```ts
 import { AuthService } from './auth.service.js'; // ✅
-import { AuthService } from './auth.service'; // ❌ falla en runtime
+import { AuthService } from './auth.service';    // ❌ falla en runtime
 ```
 
-**Prisma 7 no lee la conexión desde `schema.prisma`.** A diferencia de versiones anteriores, la connection string se entrega en tiempo de ejecución mediante un _driver adapter_ (`@prisma/adapter-pg`). Eso ocurre en [prisma.service.ts](src/prisma/prisma.service.ts). El CLI, por su lado, la toma de [prisma.config.ts](prisma.config.ts).
+**Prisma 7 no lee la conexión desde `schema.prisma`.** A diferencia de versiones anteriores, la connection string se entrega en tiempo de ejecución mediante un *driver adapter* (`@prisma/adapter-pg`). Eso ocurre en [prisma.service.ts](src/prisma/prisma.service.ts). El CLI, por su lado, la toma de [prisma.config.ts](prisma.config.ts).
 
 ---
 
@@ -68,19 +68,19 @@ Copiá la plantilla y ajustá lo que necesites:
 cp .env.example .env
 ```
 
-| Variable                        | Default             | Descripción                                  |
-| ------------------------------- | ------------------- | -------------------------------------------- |
-| `NODE_ENV`                      | `development`       | Entorno de ejecución                         |
-| `PORT`                          | `3000`              | Puerto HTTP de la API                        |
-| `POSTGRES_USER`                 | `postgres`          | Usuario que crea el contenedor de Postgres   |
-| `POSTGRES_PASSWORD`             | `postgres`          | Contraseña de ese usuario                    |
-| `POSTGRES_DB`                   | `si_be_boilerplate` | Base que se crea al inicializar              |
-| `POSTGRES_PORT`                 | `5432`              | Puerto publicado en el host                  |
-| `DATABASE_URL`                  | —                   | **Obligatoria.** Connection string de Prisma |
-| `JWT_SECRET`                    | —                   | **Obligatoria.** Mínimo 32 caracteres        |
-| `JWT_EXPIRES_IN`                | `15m`               | Vigencia del access token                    |
-| `REFRESH_TOKEN_EXPIRES_IN_DAYS` | `7`                 | Vigencia del refresh token                   |
-| `BCRYPT_SALT_ROUNDS`            | `12`                | Cost factor de bcrypt                        |
+| Variable | Default | Descripción |
+|---|---|---|
+| `NODE_ENV` | `development` | Entorno de ejecución |
+| `PORT` | `3000` | Puerto HTTP de la API |
+| `POSTGRES_USER` | `postgres` | Usuario que crea el contenedor de Postgres |
+| `POSTGRES_PASSWORD` | `postgres` | Contraseña de ese usuario |
+| `POSTGRES_DB` | `si_be_boilerplate` | Base que se crea al inicializar |
+| `POSTGRES_PORT` | `5432` | Puerto publicado en el host |
+| `DATABASE_URL` | — | **Obligatoria.** Connection string de Prisma |
+| `JWT_SECRET` | — | **Obligatoria.** Mínimo 32 caracteres |
+| `JWT_EXPIRES_IN` | `15m` | Vigencia del access token |
+| `REFRESH_TOKEN_EXPIRES_IN_DAYS` | `7` | Vigencia del refresh token |
+| `BCRYPT_SALT_ROUNDS` | `12` | Cost factor de bcrypt |
 
 > La app **valida el entorno al arrancar** ([env.validation.ts](src/config/env.validation.ts)). Si falta `DATABASE_URL` o `JWT_SECRET`, o si el secreto es más corto que 32 caracteres, falla de inmediato con un mensaje claro en lugar de romperse más tarde.
 
@@ -138,12 +138,12 @@ npm run start:dev
 <details>
 <summary>Equivalencias con yarn y pnpm</summary>
 
-| npm                      | yarn                  | pnpm                  |
-| ------------------------ | --------------------- | --------------------- |
-| `npm install`            | `yarn install`        | `pnpm install`        |
-| `npm run start:dev`      | `yarn start:dev`      | `pnpm start:dev`      |
+| npm | yarn | pnpm |
+|---|---|---|
+| `npm install` | `yarn install` | `pnpm install` |
+| `npm run start:dev` | `yarn start:dev` | `pnpm start:dev` |
 | `npm run prisma:migrate` | `yarn prisma:migrate` | `pnpm prisma:migrate` |
-| `npm run db:seed`        | `yarn db:seed`        | `pnpm db:seed`        |
+| `npm run db:seed` | `yarn db:seed` | `pnpm db:seed` |
 
 </details>
 
@@ -167,7 +167,7 @@ Define dos servicios:
 **`postgres`** levanta el motor de base de datos para desarrollo local, usando la imagen oficial `postgres:18-alpine`. Tiene tres detalles importantes:
 
 - **Volumen nombrado `pgdata`**, así los datos sobreviven a `docker compose down`.
-- **Montado en `/var/lib/postgresql`**, _no_ en `/var/lib/postgresql/data`. Postgres 18 cambió el layout y guarda los datos en un subdirectorio con el número de major version; usar la ruta vieja hace que el contenedor entre en un loop de reinicios.
+- **Montado en `/var/lib/postgresql`**, *no* en `/var/lib/postgresql/data`. Postgres 18 cambió el layout y guarda los datos en un subdirectorio con el número de major version; usar la ruta vieja hace que el contenedor entre en un loop de reinicios.
 - **`healthcheck` con `pg_isready`**, para que el servicio `api` no arranque hasta que la base acepte conexiones. Sin esto las migraciones fallan de forma intermitente al levantar todo junto.
 
 **`api`** construye y corre la aplicación a partir del `Dockerfile`, espera el healthcheck de `postgres` (`condition: service_healthy`) y al arrancar ejecuta `prisma migrate deploy && node dist/main.js`.
@@ -239,21 +239,29 @@ npm run prisma:studio
 npm run db:reset
 ```
 
-### Usuarios de prueba
+### Seed
 
-El seed del Anexo A se ejecuta con `npm run db:seed:base`. Crea dos sucursales por nombre, seis mesas en cada una y los siete usuarios siguientes, todos con clave inicial **`Demo1234!`**:
+Usuarios de prueba del Anexo A. Clave demo inicial: **`Demo1234!`**.
 
-| Rol HU               | Rol en la base    | Correo                        | Sucursal     |
-| -------------------- | ----------------- | ----------------------------- | ------------ |
-| CLIENTE              | CLIENT            | demo@example.com              | Sin sucursal |
-| MESERO               | WAITER            | waiter@example.com            | Centro       |
-| COCINA               | COOK              | cook@example.com              | Centro       |
-| CAJERO               | CASHIER           | cashier@example.com           | Santa Tecla  |
-| ENCARGADO_INVENTARIO | INVENTORY_MANAGER | inventory_manager@example.com | Santa Tecla  |
-| GERENTE              | BRANCH_ADMIN      | branch_admin@example.com      | Santa Tecla  |
-| GERENTE_GENERAL      | GENERAL_MANAGER   | general_manager@example.com   | Sin sucursal |
+| Correo                        | Rol               | Sucursal     |
+| ----------------------------- | ----------------- | ------------ |
+| demo@example.com              | CLIENT            | Sin sucursal |
+| waiter@example.com            | WAITER            | Centro       |
+| cook@example.com              | COOK              | Centro       |
+| cashier@example.com           | CASHIER           | Santa Tecla  |
+| inventory_manager@example.com | INVENTORY_MANAGER | Santa Tecla  |
+| branch_admin@example.com      | BRANCH_ADMIN      | Santa Tecla  |
+| general_manager@example.com   | GENERAL_MANAGER   | Sin sucursal |
 
-Los upserts por nombre de sucursal, número de mesa por sucursal y correo conservan los datos y contraseñas existentes. El seed no restablece claves cambiadas. Su implementación está en [prisma/seeds/base-data.ts](prisma/seeds/base-data.ts); el comando es independiente del seed heredado de Prisma.
+Con DATABASE_URL configurada hacia el PostgreSQL de Docker y las migraciones aplicadas:
+
+```bash
+npm run db:seed:base
+npm run test:db
+npm run test:migrations
+```
+
+El seed conserva usuarios y contraseñas existentes. El verificador de migraciones requiere CREATEDB y usa una base temporal.
 
 ---
 
@@ -294,14 +302,14 @@ Esquema **access token + refresh token**, solo con email y contraseña.
 
 Base: `http://localhost:3000/api/v1` · Documentación interactiva: `http://localhost:3000/api/docs`
 
-| Método | Ruta            | Auth   | Código | Descripción                                |
-| ------ | --------------- | ------ | ------ | ------------------------------------------ |
-| `GET`  | `/`             | —      | `200`  | Health check                               |
-| `POST` | `/users`        | —      | `201`  | Registra un usuario con email y contraseña |
-| `POST` | `/auth/login`   | —      | `200`  | Inicia sesión con email y contraseña       |
-| `POST` | `/auth/refresh` | —      | `200`  | Renueva el par de tokens                   |
-| `POST` | `/auth/logout`  | —      | `204`  | Cierra la sesión                           |
-| `GET`  | `/auth/me`      | Bearer | `200`  | Usuario autenticado                        |
+| Método | Ruta | Auth | Código | Descripción |
+|---|---|---|---|---|
+| `GET` | `/` | — | `200` | Health check |
+| `POST` | `/users` | — | `201` | Registra un usuario con email y contraseña |
+| `POST` | `/auth/login` | — | `200` | Inicia sesión con email y contraseña |
+| `POST` | `/auth/refresh` | — | `200` | Renueva el par de tokens |
+| `POST` | `/auth/logout` | — | `204` | Cierra la sesión |
+| `GET` | `/auth/me` | Bearer | `200` | Usuario autenticado |
 
 ### Ejemplos
 
@@ -323,7 +331,7 @@ curl -X POST $BASE/users \
   "id": "29bda5e8-e0c8-4ec2-bc7f-94c41c3c0140",
   "email": "nestor@example.com",
   "isActive": true,
-  "createdAt": "2026-09-20T17:29:59.852Z",
+  "createdAt": "2026-09-20T17:29:59.852Z"
 }
 ```
 
@@ -343,12 +351,7 @@ curl -X POST $BASE/auth/login \
   "accessToken": "eyJhbGciOiJIUzI1NiIs...",
   "refreshToken": "dbfcf084b4a238cf9afaaa2f800ee216...",
   "expiresIn": 900,
-  "user": {
-    "id": "...",
-    "email": "demo@example.com",
-    "isActive": true,
-    "createdAt": "...",
-  },
+  "user": { "id": "...", "email": "demo@example.com", "isActive": true, "createdAt": "..." }
 }
 ```
 
@@ -389,13 +392,13 @@ HTTP  →  controllers/  →  services/  →  repositories/  →  Prisma  →  P
             (HTTP)         (negocio)      (acceso a datos)
 ```
 
-| Capa            | Responsabilidad                                                           | No debe                                    |
-| --------------- | ------------------------------------------------------------------------- | ------------------------------------------ |
-| `controllers/`  | Traducir HTTP a llamadas de servicio: rutas, códigos de estado, Swagger   | Contener lógica de negocio ni tocar Prisma |
-| `services/`     | Lógica de negocio y reglas del dominio                                    | Conocer Prisma ni sus códigos de error     |
-| `repositories/` | **Todo** el acceso a datos. Es el único lugar que inyecta `PrismaService` | Lanzar excepciones HTTP                    |
-| `dto/`          | Forma y validación de lo que entra y sale                                 | —                                          |
-| `errors/`       | Errores de dominio que cruzan de repositorio a servicio                   | —                                          |
+| Capa | Responsabilidad | No debe |
+|---|---|---|
+| `controllers/` | Traducir HTTP a llamadas de servicio: rutas, códigos de estado, Swagger | Contener lógica de negocio ni tocar Prisma |
+| `services/` | Lógica de negocio y reglas del dominio | Conocer Prisma ni sus códigos de error |
+| `repositories/` | **Todo** el acceso a datos. Es el único lugar que inyecta `PrismaService` | Lanzar excepciones HTTP |
+| `dto/` | Forma y validación de lo que entra y sale | — |
+| `errors/` | Errores de dominio que cruzan de repositorio a servicio | — |
 
 ### Por qué los repositorios
 
@@ -411,10 +414,7 @@ El repositorio traduce el código `P2002` de Prisma (violación de unicidad) a u
 
 ```ts
 // repositories/user.repository.ts — sabe de Prisma, no sabe de HTTP
-if (
-  error instanceof Prisma.PrismaClientKnownRequestError &&
-  error.code === 'P2002'
-) {
+if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
   throw new EmailAlreadyTakenError(email);
 }
 
@@ -434,25 +434,25 @@ Cada módulo tiene un alias `@NombreModulo`, y como cada carpeta tiene su barrel
 
 ```ts
 import { AuthService, TokenService } from '@Auth/services';
-import { UserRepository } from '@Users/repositories';
-import { CreateUserDto } from '@Users/dto';
-import { Public, CurrentUser } from '@Auth/decorators';
-import { IsNormalizedEmail } from '@Common/decorators';
-import type { EnvConfig } from '@Config';
-import type { User } from '@PrismaClient';
+import { UserRepository }            from '@Users/repositories';
+import { CreateUserDto }             from '@Users/dto';
+import { Public, CurrentUser }       from '@Auth/decorators';
+import { IsNormalizedEmail }        from '@Common/decorators';
+import type { EnvConfig }            from '@Config';
+import type { User }                 from '@PrismaClient';
 ```
 
 Definidos en [tsconfig.json](tsconfig.json):
 
-| Alias                  | Resuelve a                                 |
-| ---------------------- | ------------------------------------------ |
-| `@Auth`, `@Auth/*`     | `src/auth/index.ts`, `src/auth/*/index.ts` |
-| `@Users`, `@Users/*`   | `src/users/…`                              |
-| `@Health`, `@Health/*` | `src/health/…`                             |
-| `@Prisma`, `@Prisma/*` | `src/prisma/…`                             |
-| `@Common/*`            | `src/common/*/index.ts`                    |
-| `@Config`              | `src/config/index.ts`                      |
-| `@PrismaClient`        | Cliente generado de Prisma                 |
+| Alias | Resuelve a |
+|---|---|
+| `@Auth`, `@Auth/*` | `src/auth/index.ts`, `src/auth/*/index.ts` |
+| `@Users`, `@Users/*` | `src/users/…` |
+| `@Health`, `@Health/*` | `src/health/…` |
+| `@Prisma`, `@Prisma/*` | `src/prisma/…` |
+| `@Common/*` | `src/common/*/index.ts` |
+| `@Config` | `src/config/index.ts` |
+| `@PrismaClient` | Cliente generado de Prisma |
 
 ### Dos detalles que hacen que esto funcione
 
@@ -532,20 +532,20 @@ Cada carpeta de capa incluye un `index.ts` que reexporta sus elementos, de modo 
 
 ## Scripts disponibles
 
-| Script            | Descripción                                               |
-| ----------------- | --------------------------------------------------------- |
-| `start`           | Compila y arranca la API                                  |
-| `start:dev`       | Arranca en modo watch (compilador + reescritura de alias) |
-| `start:prod`      | Arranca desde `dist/` ya compilado                        |
-| `build`           | Compila a `dist/` y reescribe los path aliases            |
-| `lint`            | Corre oxlint con chequeos type-aware                      |
-| `format`          | Formatea con Prettier                                     |
-| `test`            | Tests unitarios                                           |
-| `test:e2e`        | Tests end-to-end                                          |
-| `test:cov`        | Tests con reporte de cobertura                            |
-| `prisma:generate` | Regenera el cliente de Prisma                             |
-| `prisma:migrate`  | Crea y aplica una migración (desarrollo)                  |
-| `prisma:deploy`   | Aplica migraciones pendientes (producción)                |
-| `prisma:studio`   | Abre Prisma Studio                                        |
-| `db:seed`         | Carga el usuario demo                                     |
-| `db:reset`        | Resetea la base y vuelve a migrar                         |
+| Script | Descripción |
+|---|---|
+| `start` | Compila y arranca la API |
+| `start:dev` | Arranca en modo watch (compilador + reescritura de alias) |
+| `start:prod` | Arranca desde `dist/` ya compilado |
+| `build` | Compila a `dist/` y reescribe los path aliases |
+| `lint` | Corre oxlint con chequeos type-aware |
+| `format` | Formatea con Prettier |
+| `test` | Tests unitarios |
+| `test:e2e` | Tests end-to-end |
+| `test:cov` | Tests con reporte de cobertura |
+| `prisma:generate` | Regenera el cliente de Prisma |
+| `prisma:migrate` | Crea y aplica una migración (desarrollo) |
+| `prisma:deploy` | Aplica migraciones pendientes (producción) |
+| `prisma:studio` | Abre Prisma Studio |
+| `db:seed` | Carga el usuario demo |
+| `db:reset` | Resetea la base y vuelve a migrar |
