@@ -55,3 +55,20 @@ npx prisma db execute --file prisma/migrations/20261102023859_base_anexo_a/migra
 ```
 
 `db execute` no actualiza `_prisma_migrations`: para completar el ciclo se reaplica el SQL explícito. `migrate deploy` no reaplica una migración ya registrada como exitosa. Hasta restaurarla existe drift; no se debe borrar historial ni resetear datos para ocultarlo.
+
+## Verificación reproducible
+
+Con DATABASE_URL apuntando a una base de pruebas del PostgreSQL de Docker:
+
+```bash
+npm run prisma:deploy
+npm run prisma:generate
+npm run db:seed:base
+npm run db:seed:base
+npm run test:db
+npm run test:migrations
+```
+
+Los tests de integración insertan fixtures dentro de una transacción y hacen rollback por caso; comprueban código SQLSTATE y nombre de CHECK, UNIQUE o FK con `toMatchObject({ code, constraint })`. Incluyen rol inválido y correo duplicado. Los errores de enum (22P02) no tienen campo constraint en PostgreSQL: se comprueba que sea undefined.
+
+El verificador de migraciones necesita CREATEDB. Crea una base aleatoria, aplica las migraciones heredadas y prueba aplicar/revertir/reaplicar cada migración con down.sql. Compara tipos, columnas, defaults, índices, CHECK, FK y enums, y repite el ciclo conjunto. Comprueba el rechazo sin pérdida de datos de reversiones protegidas. Elimina solo su base temporal y no modifica la base de DATABASE_URL.
