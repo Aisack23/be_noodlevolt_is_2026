@@ -15,3 +15,18 @@ export interface BranchMenu {
   branch: { id: string; name: string };
   dishes: readonly MenuDish[];
 }
+
+export interface AvailableMenuDish extends MenuDish {
+  available: boolean;
+}
+
+export interface MenuCategory {
+  id: string;
+  name: string;
+  dishes: AvailableMenuDish[];
+}
+
+export interface PublicMenu {
+  branch: BranchMenu['branch'];
+  categories: MenuCategory[];
+}
