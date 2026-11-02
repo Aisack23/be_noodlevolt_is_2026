@@ -49,7 +49,7 @@ CREATE TYPE "fiscal_document_type" AS ENUM ('INVOICE', 'TAX_CREDIT', 'RECEIPT', 
 
 -- AlterTable
 ALTER TABLE "users" ADD COLUMN     "branch_id" UUID,
-ADD COLUMN     "last_name" TEXT NOT NULL,
+ADD COLUMN     "last_name" TEXT,
 ADD COLUMN     "name" TEXT NOT NULL,
 ADD COLUMN     "role" "UserRole" NOT NULL DEFAULT 'CLIENT';
 
