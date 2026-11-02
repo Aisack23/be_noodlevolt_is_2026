@@ -1,9 +1,9 @@
-
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '@Prisma/services';
 import { type Dish, type DishStatus } from '@PrismaClient';
 
 export interface CreateDishData {
+  branchId: string;
   categoryId: string;
   name: string;
   description?: string;
