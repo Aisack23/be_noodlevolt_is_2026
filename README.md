@@ -241,11 +241,27 @@ npm run db:reset
 
 ### Seed
 
-[prisma/seed.ts](prisma/seed.ts) crea un usuario de prueba mediante `upsert`, así que se puede correr las veces que haga falta:
+Usuarios de prueba del Anexo A. Clave demo inicial: **`Demo1234!`**.
 
-| Email | Contraseña |
-|---|---|
-| `demo@example.com` | `Demo1234!` |
+| Correo                        | Rol               | Sucursal     |
+| ----------------------------- | ----------------- | ------------ |
+| demo@example.com              | CLIENT            | Sin sucursal |
+| waiter@example.com            | WAITER            | Centro       |
+| cook@example.com              | COOK              | Centro       |
+| cashier@example.com           | CASHIER           | Santa Tecla  |
+| inventory_manager@example.com | INVENTORY_MANAGER | Santa Tecla  |
+| branch_admin@example.com      | BRANCH_ADMIN      | Santa Tecla  |
+| general_manager@example.com   | GENERAL_MANAGER   | Sin sucursal |
+
+Con DATABASE_URL configurada hacia el PostgreSQL de Docker y las migraciones aplicadas:
+
+```bash
+npm run db:seed:base
+npm run test:db
+npm run test:migrations
+```
+
+El seed conserva usuarios y contraseñas existentes. El verificador de migraciones requiere CREATEDB y usa una base temporal.
 
 ---
 
