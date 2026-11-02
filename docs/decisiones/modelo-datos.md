@@ -58,7 +58,14 @@ La pertenencia de platillos a sucursal permite validar el catálogo y evitar ped
 | AccountStatus   | OPEN / CLOSED                                 | ABIERTA / CERRADA                              |
 | OrderType       | DINE_IN / TAKEOUT                             | SALA / LLEVAR                                  |
 
+| PaymentMode | HU       |
+| ----------- | -------- |
+| ONLINE      | EN_LINEA |
+| AT_COUNTER  | EN_CAJA  |
+
 PENDING_PAYMENT representa el pedido para llevar pagado en línea antes de su cobro; BE-6.2.1 lo pasa a PENDING y cocina lo excluye mientras no se pague. No sustituye el estado del pago.
+
+BE-2.2.1 agrega `Order.paymentMode` como `payment_mode` nullable y el enum `PaymentMode`. El CHECK `orders_type_payment_mode_check` exige modalidad para TAKEOUT y la prohíbe para DINE_IN; compara `type::text` para no acoplarse a futuras reconstrucciones de `order_type`. El valor adicional DELIVERY queda sin regla nueva mientras su permanencia siga abierta. DB-6.2.1, a cargo de Diego, construirá encima los demás campos de pago sin redefinir `paymentMode`.
 
 La migración exige dishes vacía al agregar branch_id NOT NULL. Para datos existentes hace falta una asignación explícita acordada antes de migrar; no se deduce una sucursal ni se borran datos. También se rechazan textos o importes previos que no quepan en los tipos nuevos.
 
@@ -105,6 +112,15 @@ Para revertir el orden de categorías, primero se ejecuta su `down.sql`, antes d
 ```powershell
 npx prisma db execute --file prisma/migrations/20261102055433_orden_presentacion_categorias/down.sql
 npx prisma db execute --file prisma/migrations/20261102055433_orden_presentacion_categorias/migration.sql
+```
+
+### Reversión de la modalidad de pago
+
+La migración `20261102075333_takeout_payment_mode` debe revertirse antes de las demás migraciones propias. Su `down.sql`, generado con `prisma migrate diff --script` y completado con el CHECK, elimina `payment_mode` y el enum; se pierden los valores de modalidad existentes.
+
+```powershell
+npx prisma db execute --file prisma/migrations/20261102075333_takeout_payment_mode/down.sql
+npx prisma db execute --file prisma/migrations/20261102075333_takeout_payment_mode/migration.sql
 ```
 
 ## Verificación reproducible
