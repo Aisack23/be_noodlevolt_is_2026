@@ -180,6 +180,7 @@ model Branch {
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
 
   users        User[]
+  categories   Category[]
   dishes       Dish[]
   tables       DiningTable[]
   accounts     Account[]
@@ -260,14 +261,22 @@ model DiningTable {
 }
 
 model Category {
-  id           String  @id @default(uuid()) @db.Uuid
-  name         String  @unique @db.VarChar(100)
-  displayOrder Int     @default(0) @map("display_order")
+  id           String   @id @default(uuid()) @db.Uuid
+  branchId     String   @map("branch_id") @db.Uuid
+  name         String   @db.VarChar(100)
+  displayOrder Int      @default(0) @map("display_order")
   description  String?
-  isActive     Boolean @default(true) @map("is_active")
+  isActive     Boolean  @default(true) @map("is_active")
+  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  // El default permite agregar la columna a filas existentes; @updatedAt la mantiene después.
+  updatedAt    DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
 
+  branch Branch @relation(fields: [branchId], references: [id], onDelete: Restrict)
   dishes Dish[]
 
+  @@unique([branchId, name])
+  // Destino de la FK compuesta de Dish: un platillo solo usa categorías de su sucursal.
+  @@unique([branchId, id])
   @@map("categories")
 }
 
@@ -277,17 +286,22 @@ model Dish {
   categoryId  String     @map("category_id") @db.Uuid
   name        String     @db.VarChar(100)
   description String?    @db.VarChar(300)
-  price       Decimal    @db.Decimal(8, 2)
+  price       Decimal    @db.Decimal(10, 2)
   imageUrl    String?    @map("image_url")
+  // Se conserva durante la transición: el menú y los pedidos aún lo leen hasta BE-01.
   status      DishStatus @default(AVAILABLE)
+  isAvailable Boolean    @default(true) @map("is_available")
+  isDeleted   Boolean    @default(false) @map("is_deleted")
   createdAt   DateTime   @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt   DateTime   @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
 
   branch     Branch      @relation(fields: [branchId], references: [id], onDelete: Restrict)
-  category   Category    @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+  category   Category    @relation(fields: [branchId, categoryId], references: [branchId, id], onDelete: Restrict)
   orderItems OrderItem[]
   recipes    Recipe[]
 
   @@unique([branchId, name])
+  @@index([branchId, categoryId])
   @@map("dishes")
 }
 

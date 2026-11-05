@@ -5,17 +5,21 @@ describe.sequential(
   'DB-1.1.1 y DB-2.1.1: catálogo y líneas por sucursal',
   () => {
     const db = databaseFixture();
-    let categoryId: string;
+    let categoryByBranch: Map<string, string>;
     let dishId: string;
     let orderId: string;
 
     beforeEach(async () => {
-      categoryId = randomUUID();
+      categoryByBranch = new Map();
       orderId = randomUUID();
-      await db.client.query('INSERT INTO categories (id,name) VALUES ($1,$2)', [
-        categoryId,
-        categoryId,
-      ]);
+      for (const branchId of db.branches) {
+        const categoryId = randomUUID();
+        categoryByBranch.set(branchId, categoryId);
+        await db.client.query(
+          'INSERT INTO categories (id,branch_id,name) VALUES ($1,$2,$3)',
+          [categoryId, branchId, categoryId],
+        );
+      }
       dishId = (await createDish(db.branches[0], 'Platillo base')).rows[0].id;
       await db.client.query(
         "INSERT INTO orders (id,branch_id,type,operation_id,updated_at) VALUES ($1,$2,'DINE_IN',$3,now())",
@@ -37,7 +41,14 @@ describe.sequential(
         branch_id: string;
       }>(
         'INSERT INTO dishes (id,branch_id,category_id,name,price,description) VALUES ($1,$2,$3,$4,$5,$6) RETURNING id,name,price,description,branch_id',
-        [randomUUID(), branchId, categoryId, name, price, description],
+        [
+          randomUUID(),
+          branchId,
+          categoryByBranch.get(branchId) ?? randomUUID(),
+          name,
+          price,
+          description,
+        ],
       );
     }
     function createLine(
@@ -121,13 +132,9 @@ describe.sequential(
         'dishes_price_check',
       );
     });
-    it('limita ambos precios a NUMERIC(8,2)', async () => {
+    it('limita el precio de la línea a NUMERIC(8,2)', async () => {
       expect((await createLine(1, null, '999999.99')).rows[0].unit_price).toBe(
         '999999.99',
-      );
-      await db.rejectWrite(
-        () => createDish(db.branches[0], 'Fuera de rango', '1000000.00'),
-        '22003',
       );
       await db.rejectWrite(() => createLine(1, null, '1000000.00'), '22003');
     });
