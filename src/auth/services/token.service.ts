@@ -42,7 +42,10 @@ export class TokenService {
     const payload: AccessTokenPayload = {
       sub: user.id,
       email: user.email,
+      role: user.role,
+      branchId: user.branchId,
     };
+
 
     const accessToken = await this.jwtService.signAsync(payload);
     const refreshToken = randomBytes(REFRESH_TOKEN_BYTES).toString('hex');
