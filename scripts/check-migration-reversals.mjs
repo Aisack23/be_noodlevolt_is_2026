@@ -93,6 +93,40 @@ async function checkRefusal(directory, down) {
   await client.query('DELETE FROM branches WHERE id=$1', [branch]);
 }
 
+async function checkBranchConfigCopy(owned) {
+  const migration = owned.find(({ directory }) =>
+    directory.endsWith('parametros_sucursal'),
+  );
+  if (!migration) return;
+  const before = await schema();
+  const branches = [randomUUID(), randomUUID()];
+  for (const id of branches)
+    await client.query(
+      'INSERT INTO branches (id,name,address) VALUES ($1,$2,$3)',
+      [id, id, 'Prueba aislada'],
+    );
+  await client.query(migration.down);
+  await client.query(migration.up);
+  const { rows } = await client.query(
+    'SELECT branch_id, is_open, updated_by FROM branch_configs ORDER BY branch_id',
+  );
+  assert.deepEqual(
+    rows,
+    [...branches]
+      .sort()
+      .map((branch_id) => ({ branch_id, is_open: true, updated_by: null })),
+    'Cada sucursal existente debe quedar abierta y sin autor de cambio',
+  );
+  assert.deepEqual(
+    await schema(),
+    before,
+    'La copia de sucursales no debe alterar el schema',
+  );
+  await client.query('DELETE FROM branches WHERE id=ANY($1::uuid[])', [
+    branches,
+  ]);
+}
+
 await admin.connect();
 let created = false;
 try {
@@ -138,6 +172,7 @@ try {
     owned.length > 0,
     'Se requiere al menos una migración propia con down.sql',
   );
+  await checkBranchConfigCopy(owned);
 
   const finalSchema = await schema();
   for (const { down } of [...owned].reverse()) await client.query(down);
