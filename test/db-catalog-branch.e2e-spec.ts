@@ -1,4 +1,9 @@
 import { randomUUID } from 'node:crypto';
+import { PrismaPg } from '@prisma/adapter-pg';
+import { Client } from 'pg';
+import { BASE_BRANCHES, seedBaseData } from '../prisma/seeds/base-data.js';
+import { seedCatalogData } from '../prisma/seeds/catalog-data.js';
+import { PrismaClient } from '../src/generated/prisma/client.js';
 import { databaseFixture } from './support/database.js';
 
 describe.sequential('DB-01: categorías y platillos por sucursal', () => {
@@ -154,4 +159,158 @@ describe.sequential('DB-01: categorías y platillos por sucursal', () => {
       rows.every(({ data_type }) => data_type === 'timestamp with time zone'),
     ).toBe(true);
   });
+});
+
+// El seed confirma sus escrituras con su propia conexión, por lo que no puede
+// correr dentro de la transacción con rollback de databaseFixture.
+describe.sequential('DB-01: repetibilidad del seed de catálogo', () => {
+  const SEED_TIMEOUT_MS = 30_000;
+  const branchNames = BASE_BRANCHES.map(({ name }) => name);
+  let client: Client;
+  let prisma: PrismaClient;
+
+  beforeAll(async () => {
+    client = new Client({ connectionString: process.env.DATABASE_URL });
+    await client.connect();
+    prisma = new PrismaClient({
+      adapter: new PrismaPg({ connectionString: process.env.DATABASE_URL }),
+    });
+    await seedBaseData(prisma);
+    await seedCatalogData(prisma);
+  }, SEED_TIMEOUT_MS);
+
+  afterAll(async () => {
+    await prisma.$disconnect();
+    await client.end();
+  });
+
+  async function catalogSnapshot() {
+    const categories = await client.query<{ branch_id: string }>(
+      `SELECT c.id, c.branch_id, c.name, c.display_order, c.description, c.is_active, c.created_at
+         FROM categories c JOIN branches b ON b.id = c.branch_id
+         WHERE b.name = ANY($1) ORDER BY c.id`,
+      [branchNames],
+    );
+    const dishes = await client.query<{ branch_id: string }>(
+      `SELECT d.id, d.branch_id, d.category_id, d.name, d.description, d.price,
+              d.status, d.is_available, d.is_deleted, d.created_at
+         FROM dishes d JOIN branches b ON b.id = d.branch_id
+         WHERE b.name = ANY($1) ORDER BY d.id`,
+      [branchNames],
+    );
+    return { categories: categories.rows, dishes: dishes.rows };
+  }
+
+  it(
+    'no duplica categorías ni platillos y conserva sus ID',
+    async () => {
+      const before = await catalogSnapshot();
+      await seedCatalogData(prisma);
+      const after = await catalogSnapshot();
+
+      expect(after).toEqual(before);
+      for (const branchId of new Set(
+        after.dishes.map(({ branch_id }) => branch_id),
+      )) {
+        const inBranch = ({ branch_id }: { branch_id: string }) =>
+          branch_id === branchId;
+        expect(after.categories.filter(inBranch).length).toBeGreaterThanOrEqual(
+          4,
+        );
+        expect(after.dishes.filter(inBranch).length).toBeGreaterThanOrEqual(10);
+      }
+    },
+    SEED_TIMEOUT_MS,
+  );
+
+  it(
+    'conserva precios y estados modificados después del primer seed',
+    async () => {
+      const changes = [
+        {
+          name: 'Ramen de pollo',
+          price: '11.11',
+          status: 'SOLD_OUT',
+          isAvailable: false,
+          isDeleted: true,
+        },
+        {
+          name: 'Sopa wonton',
+          price: '12.34',
+          status: 'AVAILABLE',
+          isAvailable: true,
+          isDeleted: false,
+        },
+      ];
+      const dishNames = changes.map(({ name }) => name);
+      const original = await client.query<{
+        id: string;
+        price: string;
+        status: string;
+        is_available: boolean;
+        is_deleted: boolean;
+      }>(
+        `SELECT d.id, d.price, d.status, d.is_available, d.is_deleted
+           FROM dishes d JOIN branches b ON b.id = d.branch_id
+           WHERE b.name = $1 AND d.name = ANY($2)`,
+        [branchNames[0], dishNames],
+      );
+      expect(original.rows).toHaveLength(changes.length);
+      try {
+        for (const change of changes)
+          await client.query(
+            `UPDATE dishes d SET price=$1, status=$2, is_available=$3, is_deleted=$4
+               FROM branches b
+               WHERE b.id = d.branch_id AND b.name = $5 AND d.name = $6`,
+            [
+              change.price,
+              change.status,
+              change.isAvailable,
+              change.isDeleted,
+              branchNames[0],
+              change.name,
+            ],
+          );
+        const modified = await catalogSnapshot();
+
+        await seedCatalogData(prisma);
+
+        expect(await catalogSnapshot()).toEqual(modified);
+        const { rows } = await client.query<{
+          name: string;
+          price: string;
+          status: string;
+          is_available: boolean;
+          is_deleted: boolean;
+        }>(
+          `SELECT d.name, d.price, d.status, d.is_available, d.is_deleted
+             FROM dishes d JOIN branches b ON b.id = d.branch_id
+             WHERE b.name = $1 AND d.name = ANY($2) ORDER BY d.name`,
+          [branchNames[0], dishNames],
+        );
+        expect(rows).toEqual(
+          changes.map(({ name, price, status, isAvailable, isDeleted }) => ({
+            name,
+            price,
+            status,
+            is_available: isAvailable,
+            is_deleted: isDeleted,
+          })),
+        );
+      } finally {
+        for (const dish of original.rows)
+          await client.query(
+            'UPDATE dishes SET price=$1, status=$2, is_available=$3, is_deleted=$4 WHERE id=$5',
+            [
+              dish.price,
+              dish.status,
+              dish.is_available,
+              dish.is_deleted,
+              dish.id,
+            ],
+          );
+      }
+    },
+    SEED_TIMEOUT_MS,
+  );
 });

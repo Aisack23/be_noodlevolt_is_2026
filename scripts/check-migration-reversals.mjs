@@ -48,9 +48,30 @@ async function categoryCopyFixtures() {
   const branches = [randomUUID(), randomUUID()];
   const categories = { used: randomUUID(), unused: randomUUID() };
   const dishes = [
-    { id: randomUUID(), branch: branches[0], status: 'AVAILABLE' },
-    { id: randomUUID(), branch: branches[0], status: 'SOLD_OUT' },
-    { id: randomUUID(), branch: branches[1], status: 'DISABLED' },
+    {
+      id: randomUUID(),
+      branch: branches[0],
+      status: 'AVAILABLE',
+      price: '8.50',
+      description: 'Con pollo y vegetales',
+      createdAt: '2026-01-15T10:00:00.000Z',
+    },
+    {
+      id: randomUUID(),
+      branch: branches[0],
+      status: 'SOLD_OUT',
+      price: '999999.99',
+      description: null,
+      createdAt: '2026-02-20T18:30:00.000Z',
+    },
+    {
+      id: randomUUID(),
+      branch: branches[1],
+      status: 'DISABLED',
+      price: '0.01',
+      description: 'Solo en temporada',
+      createdAt: '2026-03-25T23:59:59.000Z',
+    },
   ];
   for (const id of branches)
     await client.query(
@@ -58,30 +79,78 @@ async function categoryCopyFixtures() {
       [id, id, 'Prueba aislada'],
     );
   await client.query(
-    'INSERT INTO categories (id,name,display_order,is_active) VALUES ($1,$2,3,false),($3,$4,0,true)',
+    `INSERT INTO categories (id,name,display_order,is_active,description)
+       VALUES ($1,$2,3,false,'Platos con fideos'),($3,$4,0,true,NULL)`,
     [categories.used, 'Usada', categories.unused, 'Sin platillos'],
   );
-  for (const { id, branch, status } of dishes)
+  for (const dish of dishes)
     await client.query(
-      'INSERT INTO dishes (id,branch_id,category_id,name,price,status) VALUES ($1,$2,$3,$4,1,$5)',
-      [id, branch, categories.used, id, status],
+      `INSERT INTO dishes (id,branch_id,category_id,name,price,status,description,created_at)
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8)`,
+      [
+        dish.id,
+        dish.branch,
+        categories.used,
+        dish.id,
+        dish.price,
+        dish.status,
+        dish.description,
+        dish.createdAt,
+      ],
     );
-  return { branches, dishes };
+  return { branches, dishes, dishesBefore: await preservedDishRows() };
 }
 
-async function checkCategoryCopy({ branches, dishes }) {
+async function preservedDishRows() {
+  const { rows } = await client.query(
+    `SELECT id, branch_id, name, description, price, image_url, status, created_at
+       FROM dishes ORDER BY id`,
+  );
+  return rows;
+}
+
+async function checkCategoryCopy({ branches, dishes, dishesBefore }) {
   const copies = await client.query(
-    `SELECT branch_id, name, display_order, is_active FROM categories
+    `SELECT branch_id, name, display_order, is_active, description FROM categories
        ORDER BY branch_id, name`,
   );
   assert.deepEqual(
     copies.rows,
     [...branches].sort().flatMap((branch_id) => [
-      { branch_id, name: 'Sin platillos', display_order: 0, is_active: true },
-      { branch_id, name: 'Usada', display_order: 3, is_active: false },
+      {
+        branch_id,
+        name: 'Sin platillos',
+        display_order: 0,
+        is_active: true,
+        description: null,
+      },
+      {
+        branch_id,
+        name: 'Usada',
+        display_order: 3,
+        is_active: false,
+        description: 'Platos con fideos',
+      },
     ]),
     'Cada categoría debe copiarse a cada sucursal con sus datos',
   );
+  const dishesAfter = await preservedDishRows();
+  assert.deepEqual(
+    dishesAfter.map(({ id }) => id),
+    dishes.map(({ id }) => id).sort(),
+    'La migración debe conservar exactamente los mismos ID de platillos',
+  );
+  assert.deepEqual(
+    dishesAfter,
+    dishesBefore,
+    'La migración debe conservar precio, descripción y created_at de los platillos',
+  );
+  for (const { id, price, description, createdAt } of dishes) {
+    const row = dishesAfter.find((dish) => dish.id === id);
+    assert.equal(row.price, price);
+    assert.equal(row.description, description);
+    assert.equal(row.created_at.toISOString(), createdAt);
+  }
   const expected = {
     AVAILABLE: true,
     SOLD_OUT: false,
