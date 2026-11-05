@@ -197,19 +197,31 @@ describe.sequential('DB-11: seed y auditoría del estado de sucursal', () => {
   );
 
   it(
-    'conserva un estado modificado después del primer seed',
+    'conserva estado, autor y fecha históricos después del primer seed',
     async () => {
       await withRestoredConfigs(async () => {
-        const [config] = await configSnapshot();
+        const historicDate = '2026-01-01T00:00:00.000Z';
+        const manager = await prisma.user.findUniqueOrThrow({
+          where: { email: 'branch_admin@example.com' },
+        });
+        const config = (await configSnapshot()).find(
+          ({ branch_id }) => branch_id === manager.branchId,
+        );
+        if (!config) throw new Error('Falta la configuración del gerente.');
         await client.query(
-          'UPDATE branch_configs SET is_open=NOT is_open WHERE id=$1',
-          [config.id],
+          'UPDATE branch_configs SET is_open=false, updated_by=$1, updated_at=$2 WHERE id=$3',
+          [manager.id, historicDate, config.id],
         );
         const modified = await configSnapshot();
 
         await seedBranchConfigData(prisma);
 
-        expect(await configSnapshot()).toEqual(modified);
+        const after = await configSnapshot();
+        expect(after).toEqual(modified);
+        const seeded = after.find(({ id }) => id === config.id);
+        expect(seeded?.is_open).toBe(false);
+        expect(seeded?.updated_by).toBe(manager.id);
+        expect(seeded?.updated_at.toISOString()).toBe(historicDate);
       });
     },
     SEED_TIMEOUT_MS,
