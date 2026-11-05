@@ -34,13 +34,17 @@
 
 Los DTO mapean los nombres del modelo en inglés a claves JSON en español. Los precios mantienen Decimal hasta su conversión con `toFixed(2)`, sin pasar por Number. Las categorías sin platillos visibles se omiten y se ordenan por displayOrder ascendente, luego nombre en español y luego ID. Los platillos se ordenan por nombre en español e ID. displayOrder es interno; no se agrega a la respuesta JSON.
 
+**Decisión técnica (DB-01):** el precio se guarda como `Decimal(10,2)` y la respuesta conserva el string con dos decimales (`"8.50"`). Así no pasa por coma flotante y el contrato del menú no cambia.
+
+Desde DB-01 cada categoría pertenece a una sucursal, de modo que una misma categoría tiene un `id` distinto en cada sucursal; el cliente no debe reutilizar esos identificadores al cambiar de sucursal. Las claves y la forma del JSON no cambian.
+
 Category almacena el orden en display_order, entero obligatorio con default 0. El seed configura Entradas=1, Platos fuertes=2, Bebidas=3 y Postres=4, también al actualizar categorías existentes. Las demás categorías conservan 0 hasta asignarles otro valor. La migración nueva y su reversión están documentadas en [modelo-datos.md](modelo-datos.md).
 
 ## Lectura y disponibilidad
 
 El repositorio usa consultas tipadas de Prisma: `Branch.findFirst` con `isActive=true` y `Dish.findMany`, filtrando `branchId`, `status` distinto de DISABLED y `category.isActive=true`, con include de categoría. No usa SQL crudo ni consultas dentro de bucles. Prisma puede resolver el include mediante una consulta agrupada para las categorías; no se realiza una lectura por platillo. La sucursal se consulta por separado para distinguir inexistente de menú vacío. El filtro de visibilidad vive solo en el repositorio; el servicio ordena los platillos y categorías por displayOrder, nombre con `localeCompare('es')` e ID.
 
-DISABLED se excluye. SOLD_OUT permanece visible con disponible=false. AVAILABLE es disponible solo si el verificador de insumos devuelve su ID. Cada solicitud consulta el estado y precio actuales; esta ruta no reserva ni descuenta inventario y no cambia estados persistidos. Al confirmar un pedido deben revalidarse insumos y precios.
+La lectura sigue usando `Dish.status`; `isAvailable` e `isDeleted` existen desde DB-01, pero el menú los usará a partir de BE-01. DISABLED se excluye. SOLD_OUT permanece visible con disponible=false. AVAILABLE es disponible solo si el verificador de insumos devuelve su ID. Cada solicitud consulta el estado y precio actuales; esta ruta no reserva ni descuenta inventario y no cambia estados persistidos. Al confirmar un pedido deben revalidarse insumos y precios.
 
 **Decisión del equipo:** la HU no define la visibilidad de sucursales y categorías inactivas. Una sucursal con `isActive=false` responde 404 con «La sucursal no existe.»; los platillos de categorías inactivas no aparecen. Si el verificador de insumos falla, el servicio registra el error con `Logger.warn` y responde 200 con todos los platillos visibles en `disponible=false`.
 

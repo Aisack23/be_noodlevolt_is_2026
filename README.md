@@ -261,7 +261,7 @@ npm run test:db
 npm run test:migrations
 ```
 
-Para cargar además las 4 categorías y 8 platillos por sucursal: `npm run db:seed:catalog`.
+Para cargar además 4 categorías y 10 platillos por sucursal: `npm run db:seed:catalog`.
 
 El seed conserva usuarios y contraseñas existentes. El verificador de migraciones requiere CREATEDB y usa una base temporal.
 
