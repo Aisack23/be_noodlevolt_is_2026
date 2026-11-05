@@ -10,6 +10,7 @@ if (!connectionString)
     'DATABASE_URL es obligatorio y debe apuntar al PostgreSQL de Docker.',
   );
 
+const CATEGORY_COPY_MIGRATION = 'categorias_platillos_sucursal';
 const database = `hu_reversal_${randomUUID().replaceAll('-', '')}`;
 const testUrl = new URL(connectionString);
 testUrl.pathname = `/${database}`;
@@ -43,10 +44,165 @@ async function schema() {
   return snapshot;
 }
 
+async function categoryCopyFixtures() {
+  const branches = [randomUUID(), randomUUID()];
+  const categories = { used: randomUUID(), unused: randomUUID() };
+  const dishes = [
+    {
+      id: randomUUID(),
+      branch: branches[0],
+      status: 'AVAILABLE',
+      price: '8.50',
+      description: 'Con pollo y vegetales',
+      createdAt: '2026-01-15T10:00:00.000Z',
+    },
+    {
+      id: randomUUID(),
+      branch: branches[0],
+      status: 'SOLD_OUT',
+      price: '999999.99',
+      description: null,
+      createdAt: '2026-02-20T18:30:00.000Z',
+    },
+    {
+      id: randomUUID(),
+      branch: branches[1],
+      status: 'DISABLED',
+      price: '0.01',
+      description: 'Solo en temporada',
+      createdAt: '2026-03-25T23:59:59.000Z',
+    },
+  ];
+  for (const id of branches)
+    await client.query(
+      'INSERT INTO branches (id,name,address) VALUES ($1,$2,$3)',
+      [id, id, 'Prueba aislada'],
+    );
+  await client.query(
+    `INSERT INTO categories (id,name,display_order,is_active,description)
+       VALUES ($1,$2,3,false,'Platos con fideos'),($3,$4,0,true,NULL)`,
+    [categories.used, 'Usada', categories.unused, 'Sin platillos'],
+  );
+  for (const dish of dishes)
+    await client.query(
+      `INSERT INTO dishes (id,branch_id,category_id,name,price,status,description,created_at)
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8)`,
+      [
+        dish.id,
+        dish.branch,
+        categories.used,
+        dish.id,
+        dish.price,
+        dish.status,
+        dish.description,
+        dish.createdAt,
+      ],
+    );
+  return { branches, dishes, dishesBefore: await preservedDishRows() };
+}
+
+async function preservedDishRows() {
+  const { rows } = await client.query(
+    `SELECT id, branch_id, name, description, price, image_url, status, created_at
+       FROM dishes ORDER BY id`,
+  );
+  return rows;
+}
+
+async function checkCategoryCopy({ branches, dishes, dishesBefore }) {
+  const copies = await client.query(
+    `SELECT branch_id, name, display_order, is_active, description FROM categories
+       ORDER BY branch_id, name`,
+  );
+  assert.deepEqual(
+    copies.rows,
+    [...branches].sort().flatMap((branch_id) => [
+      {
+        branch_id,
+        name: 'Sin platillos',
+        display_order: 0,
+        is_active: true,
+        description: null,
+      },
+      {
+        branch_id,
+        name: 'Usada',
+        display_order: 3,
+        is_active: false,
+        description: 'Platos con fideos',
+      },
+    ]),
+    'Cada categoría debe copiarse a cada sucursal con sus datos',
+  );
+  const dishesAfter = await preservedDishRows();
+  assert.deepEqual(
+    dishesAfter.map(({ id }) => id),
+    dishes.map(({ id }) => id).sort(),
+    'La migración debe conservar exactamente los mismos ID de platillos',
+  );
+  assert.deepEqual(
+    dishesAfter,
+    dishesBefore,
+    'La migración debe conservar precio, descripción y created_at de los platillos',
+  );
+  for (const { id, price, description, createdAt } of dishes) {
+    const row = dishesAfter.find((dish) => dish.id === id);
+    assert.equal(row.price, price);
+    assert.equal(row.description, description);
+    assert.equal(row.created_at.toISOString(), createdAt);
+  }
+  const expected = {
+    AVAILABLE: true,
+    SOLD_OUT: false,
+    DISABLED: false,
+  };
+  for (const { id, branch, status } of dishes) {
+    const { rows } = await client.query(
+      `SELECT d.status, d.is_available, d.is_deleted, c.branch_id, c.name
+         FROM dishes d JOIN categories c ON c.id = d.category_id
+         WHERE d.id = $1`,
+      [id],
+    );
+    assert.deepEqual(
+      rows[0],
+      {
+        status,
+        is_available: expected[status],
+        is_deleted: false,
+        branch_id: branch,
+        name: 'Usada',
+      },
+      `El platillo ${status} debe quedar en la copia de su sucursal`,
+    );
+  }
+  await client.query('DELETE FROM dishes');
+  await client.query('DELETE FROM categories');
+  await client.query('DELETE FROM branches WHERE id=ANY($1::uuid[])', [
+    branches,
+  ]);
+}
+
+async function checkCategoryWithoutBranch(up) {
+  const id = randomUUID();
+  await client.query('INSERT INTO categories (id,name) VALUES ($1,$2)', [
+    id,
+    id,
+  ]);
+  const before = await schema();
+  await assert.rejects(client.query(up), { code: 'P0001' });
+  assert.deepEqual(
+    await schema(),
+    before,
+    'Sin sucursales la migración no debe aplicar cambios parciales',
+  );
+  await client.query('DELETE FROM categories WHERE id=$1', [id]);
+}
+
 async function checkRefusal(directory, down) {
   const enums = directory.endsWith('base_anexo_a');
   const branchColumn = directory.endsWith('catalogo_pedidos_hu');
-  if (!enums && !branchColumn) return;
+  const categoryBranch = directory.endsWith(CATEGORY_COPY_MIGRATION);
+  if (!enums && !branchColumn && !categoryBranch) return;
   const branch = randomUUID();
   const record = randomUUID();
   const category = randomUUID();
@@ -59,6 +215,11 @@ async function checkRefusal(directory, down) {
       `INSERT INTO users (id,email,name,last_name,password_hash,role,branch_id,updated_at)
       VALUES ($1,$2,'Inventario','Prueba','test','INVENTORY_MANAGER',$3,now())`,
       [record, `${record}@example.com`, branch],
+    );
+  } else if (categoryBranch) {
+    await client.query(
+      'INSERT INTO categories (id,branch_id,name) VALUES ($1,$2,$3)',
+      [record, branch, record],
     );
   } else {
     await client.query('INSERT INTO categories (id,name) VALUES ($1,$2)', [
@@ -78,7 +239,7 @@ async function checkRefusal(directory, down) {
     before,
     `Un rechazo no debe alterar el schema: ${directory}`,
   );
-  const table = enums ? 'users' : 'dishes';
+  const table = enums ? 'users' : categoryBranch ? 'categories' : 'dishes';
   const rows = await client.query(
     `DELETE FROM "${table}" WHERE id=$1 RETURNING id`,
     [record],
@@ -115,7 +276,14 @@ try {
       if (error.code !== 'ENOENT') throw error;
     }
     const before = down ? await schema() : null;
-    await client.query(up);
+    if (directory.endsWith(CATEGORY_COPY_MIGRATION)) {
+      await checkCategoryWithoutBranch(up);
+      const fixtures = await categoryCopyFixtures();
+      await client.query(up);
+      await checkCategoryCopy(fixtures);
+    } else {
+      await client.query(up);
+    }
     if (!down) continue;
     const after = await schema();
     await checkRefusal(directory, down);

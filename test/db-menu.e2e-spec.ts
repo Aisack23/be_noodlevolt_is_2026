@@ -13,14 +13,25 @@ import type { IngredientAvailabilityChecker } from '../src/catalog/menu/ports/in
 
 describe.sequential('BE-1.2.1: menú público contra PostgreSQL', () => {
   const branches = [randomUUID(), randomUUID(), randomUUID()];
-  const categories = [randomUUID(), randomUUID(), randomUUID(), randomUUID()];
-  const categoryOrders = [3, 2, 4, 1];
+  const categories = [
+    randomUUID(),
+    randomUUID(),
+    randomUUID(),
+    randomUUID(),
+    randomUUID(),
+    randomUUID(),
+  ];
+  const categoryOrders = [3, 2, 4, 1, 3, 2];
+  // Las dos últimas son las copias de Bebidas y Platos fuertes en la segunda sucursal.
+  const categoryBranches = [0, 0, 0, 0, 1, 1];
   const suffix = randomUUID();
   const categoryNames = [
     `A Bebidas ${suffix}`,
     `B Platos fuertes ${suffix}`,
     `C Ocultos ${suffix}`,
     `D Vacía ${suffix}`,
+    `A Bebidas ${suffix}`,
+    `B Platos fuertes ${suffix}`,
   ];
   let app: INestApplication;
   let module: TestingModule;
@@ -59,8 +70,13 @@ describe.sequential('BE-1.2.1: menú público contra PostgreSQL', () => {
       }
       for (const [index, id] of categories.entries()) {
         await client.query(
-          'INSERT INTO categories (id,name,display_order) VALUES ($1,$2,$3)',
-          [id, categoryNames[index], categoryOrders[index]],
+          'INSERT INTO categories (id,branch_id,name,display_order) VALUES ($1,$2,$3,$4)',
+          [
+            id,
+            branches[categoryBranches[index]],
+            categoryNames[index],
+            categoryOrders[index],
+          ],
         );
       }
       const dishes = [
@@ -101,14 +117,14 @@ describe.sequential('BE-1.2.1: menú público contra PostgreSQL', () => {
         },
         {
           branch: 1,
-          category: 1,
+          category: 5,
           name: 'Ramen',
           price: '13.00',
           status: 'AVAILABLE',
         },
         {
           branch: 1,
-          category: 0,
+          category: 4,
           name: 'Zumo',
           price: '4.75',
           status: 'AVAILABLE',
