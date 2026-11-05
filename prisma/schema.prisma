@@ -189,8 +189,25 @@ model Branch {
   purchases    Purchase[]
   payments     Payment[]
   reviews      Review[]
+  config       BranchConfig?
 
   @@map("branches")
+}
+
+model BranchConfig {
+  id        String   @id @default(uuid()) @db.Uuid
+  branchId  String   @unique @map("branch_id") @db.Uuid
+  // true = ABIERTA, false = CERRADA; distinto de Branch.isActive, que retira la sucursal.
+  isOpen    Boolean  @default(true) @map("is_open")
+  // Nulo mientras nadie haya cambiado el estado inicial.
+  updatedBy String?  @map("updated_by") @db.Uuid
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  branch        Branch @relation(fields: [branchId], references: [id], onDelete: Cascade)
+  updatedByUser User?  @relation(fields: [updatedBy], references: [id], onDelete: SetNull)
+
+  @@map("branch_configs")
 }
 
 model User {
@@ -219,6 +236,7 @@ model User {
   reviews            Review[]
   notifications      Notification[]
   orderStatusChanges OrderStatusHistory[]
+  branchConfigChanges BranchConfig[]
 
   @@index([branchId])
   @@index([role, isActive])
