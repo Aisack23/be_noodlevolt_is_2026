@@ -443,7 +443,7 @@ model Reservation {
 
 model Ingredient {
   id           String  @id @default(uuid()) @db.Uuid
-  name         String  @db.VarChar(150)
+  name         String  @unique @db.VarChar(150)
   unit         String  @db.VarChar(30)
   isActive     Boolean @default(true) @map("is_active")
 
@@ -460,8 +460,10 @@ model BranchIngredient {
   currentStock Decimal @default(0) @map("current_stock") @db.Decimal(14, 3)
   minimumStock Decimal @default(0) @map("minimum_stock") @db.Decimal(14, 3)
   isActive Boolean @default(true) @map("is_active")
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
 
-  branch     Branch     @relation(fields: [branchId], references: [id], onDelete: Cascade)
+  branch     Branch     @relation(fields: [branchId], references: [id], onDelete: Restrict)
   ingredient Ingredient @relation(fields: [ingredientId], references: [id], onDelete: Restrict)
 
   purchaseItems PurchaseDetail[]
