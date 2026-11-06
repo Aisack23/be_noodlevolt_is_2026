@@ -50,7 +50,7 @@ describe.sequential('BE-02: creación transaccional de pedidos', () => {
       );
       for (const id of [customerId, otherCustomerId]) {
         await client.query(
-          'INSERT INTO users (id,name,email,password_hash,role) VALUES ($1,$2,$3,$4,$5)',
+          'INSERT INTO users (id,name,email,password_hash,role,updated_at) VALUES ($1,$2,$3,$4,$5,CURRENT_TIMESTAMP)',
           [id, 'Test', `${id}@example.com`, 'not-used-for-login', 'CLIENT'],
         );
       }
