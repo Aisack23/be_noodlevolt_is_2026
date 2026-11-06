@@ -17,6 +17,7 @@ export class MenuRepository {
     const dishes = await this.prisma.dish.findMany({
       where: {
         branchId,
+        isDeleted: false,
         status: { not: 'DISABLED' },
         category: { isActive: true },
       },
@@ -27,12 +28,13 @@ export class MenuRepository {
     return {
       branch,
       dishes: dishes.map(
-        ({ id, name, description, price, status, category }) => ({
+        ({ id, name, description, price, status, isAvailable, category }) => ({
           id,
           name,
           description,
           price,
           status,
+          isAvailable,
           category,
         }),
       ),
