@@ -44,4 +44,4 @@
 
 ## Pruebas
 
-`test/db-inventory-stock.e2e-spec.ts` usa el seed de DB-05 y crea sus propios fixtures, que elimina al terminar. El seed solo tiene un gerente, en Santa Tecla, por lo que el de Centro es un fixture.
+`test/db-inventory-stock.e2e-spec.ts` no usa el seed: crea con nombres únicos sus sucursales, usuarios, insumos y existencias, y los elimina al terminar. Cambiar las existencias de Centro o Santa Tecla no afecta sus aserciones. Como la base se comparte con otras suites, en el GERENTE_GENERAL solo exige sus sucursales de prueba, no la lista completa.
