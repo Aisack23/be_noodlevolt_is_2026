@@ -8,6 +8,9 @@ import type { TestingModule } from '@nestjs/testing';
 import { hash } from 'bcrypt';
 import { Client } from 'pg';
 import request from 'supertest';
+import { BranchNotFoundError } from '../src/branches/config/errors/index.js';
+import { BranchConfigRepository } from '../src/branches/config/repositories/index.js';
+import { PrismaService } from '../src/prisma/services/index.js';
 
 const PASSWORD = 'Prueba1234!';
 const FORBIDDEN = 'Solo el gerente de la sucursal puede cambiar su estado.';
@@ -300,10 +303,62 @@ describe.sequential('BE-11: estado de sucursal contra PostgreSQL', () => {
         });
     });
 
+    it('responde 404 para una sucursal activa sin configuración, sin suponerla abierta', async () => {
+      await client.query('DELETE FROM branch_configs WHERE branch_id=$1', [
+        branchA,
+      ]);
+      try {
+        const response = await request(app.getHttpServer())
+          .get(`/api/v1/branches/${branchA}/config`)
+          .expect(404);
+        expect(response.body.message).toBe('La sucursal no existe.');
+        expect(response.body).not.toEqual({ isOpen: true });
+        expect(response.body).not.toHaveProperty('isOpen');
+      } finally {
+        await client.query(
+          'INSERT INTO branch_configs (id,branch_id) VALUES ($1,$2) ON CONFLICT (branch_id) DO NOTHING',
+          [randomUUID(), branchA],
+        );
+      }
+    });
+
     it('responde 400 para un id que no es UUID', async () => {
       await request(app.getHttpServer())
         .get('/api/v1/branches/id-invalido/config')
         .expect(400);
+    });
+  });
+
+  // Fijan contra el driver real la forma de meta de la que depende el repositorio.
+  describe('violaciones reales de FK en el repositorio', () => {
+    it('la FK de updated_by no se traduce a sucursal inexistente', async () => {
+      const before = await config(branchA);
+      const error: unknown = await module
+        .get(BranchConfigRepository, { strict: false })
+        .setIsOpen(branchA, false, randomUUID())
+        .catch((failure: unknown) => failure);
+      expect(error).not.toBeInstanceOf(BranchNotFoundError);
+      expect(error).toMatchObject({ code: 'P2003' });
+      expect(await config(branchA)).toEqual(before);
+    });
+
+    it('la FK de sucursal se traduce a sucursal inexistente', async () => {
+      // Simula una sucursal borrada entre la comprobación y el upsert.
+      const prisma = module.get(PrismaService, { strict: false });
+      const racingPrisma = {
+        $transaction: <T>(work: (client: unknown) => Promise<T>) =>
+          work({
+            branch: { findFirst: () => Promise.resolve({ id: 'borrada' }) },
+            branchConfig: prisma.branchConfig,
+          }),
+      } as unknown as PrismaService;
+      await expect(
+        new BranchConfigRepository(racingPrisma).setIsOpen(
+          randomUUID(),
+          false,
+          userIds.get('manager') ?? '',
+        ),
+      ).rejects.toBeInstanceOf(BranchNotFoundError);
     });
   });
 
