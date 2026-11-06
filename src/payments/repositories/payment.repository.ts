@@ -57,8 +57,9 @@ export class PaymentRepository {
   }
 
   findByOrder(orderId: string): Promise<Payment | null> {
-    return this.prisma.payment.findUnique({
+    return this.prisma.payment.findFirst({
       where: { orderId },
+      orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
     });
   }
 
