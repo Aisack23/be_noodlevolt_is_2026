@@ -358,6 +358,8 @@ model Order {
   deliveryReference    String?   @map("delivery_reference")
   deliveryInstructions String?   @map("delivery_instructions")
 
+  total            Decimal?      @db.Decimal(14, 2)
+  requestHash      String?       @map("request_hash") @db.VarChar(64)
   status           OrderStatus   @default(PENDING)
   paymentMode      PaymentMode?  @map("payment_mode")
   operationId      String        @unique @default(uuid()) @map("operation_id") @db.Uuid
@@ -389,7 +391,7 @@ model OrderItem {
   dishId    String          @map("dish_id") @db.Uuid
   dishName  String          @map("dish_name") @db.VarChar(150)
   quantity  Int
-  unitPrice Decimal         @map("unit_price") @db.Decimal(8, 2)
+  unitPrice Decimal         @map("unit_price") @db.Decimal(10, 2)
   note      String?         @db.VarChar(200)
   status    OrderItemStatus @default(PENDING)
   createdAt DateTime        @default(now()) @map("created_at") @db.Timestamptz(6)
