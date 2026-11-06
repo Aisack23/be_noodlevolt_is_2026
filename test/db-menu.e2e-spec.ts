@@ -378,4 +378,61 @@ describe.sequential('BE-1.2.1: menú público contra PostgreSQL', () => {
       'Si falla la verificación de insumos',
     );
   });
+
+
+  it('QA-01: permite consultar el menú con un Bearer inválido porque la ruta es pública', async () => {
+    const response = await request(app.getHttpServer())
+      .get(`/api/v1/sucursales/${branches[0]}/menu`)
+      .set('Authorization', 'Bearer token-invalido')
+      .expect(200);
+
+    expect(response.body).toEqual(
+      expect.objectContaining({
+        sucursal: expect.objectContaining({
+          id: branches[0],
+        }),
+        categorias: expect.any(Array),
+      }),
+    );
+  });
+
+  it('QA-01: responde con disponibilidad falsa si falla el verificador de insumos', async () => {
+    const checker = app.get<IngredientAvailabilityChecker>(
+      INGREDIENT_AVAILABILITY_CHECKER,
+    );
+
+    const spy = vi
+      .spyOn(checker, 'findSufficientDishIds')
+      .mockRejectedValueOnce(
+        new Error('Fallo simulado del verificador'),
+      );
+
+    try {
+      const response = await request(app.getHttpServer())
+        .get(`/api/v1/sucursales/${branches[0]}/menu`)
+        .expect(200);
+
+      const body = response.body as MenuResponseDto;
+
+      const dishes = body.categorias.flatMap(
+        (category) => category.platillos,
+      );
+
+      expect(dishes.length).toBeGreaterThan(0);
+
+      expect(
+        dishes.every((dish) => dish.disponible === false),
+      ).toBe(true);
+
+      expect(spy).toHaveBeenCalledTimes(1);
+      expect(spy).toHaveBeenCalledWith(
+        branches[0],
+        expect.any(Array),
+      );
+    } finally {
+      spy.mockRestore();
+    }
+  });
+
+
 });
