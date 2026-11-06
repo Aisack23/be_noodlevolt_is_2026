@@ -21,6 +21,21 @@
 - **Horarios fuera de alcance.** `openingTime` y `closingTime` son opcionales en DB-11 y la configuración avanzada de horarios está fuera del MVP, por lo que no se agregan.
 - **Validación de pedidos.** Consultar `isOpen` dentro de la transacción de alta corresponde a BE-02. El endpoint de cambio y la consulta pública corresponden a BE-11.
 
+## Endpoints — BE-11
+
+| Método y ruta                       | Acceso                  | Entrada               | Respuesta 200                      | Errores            |
+| ----------------------------------- | ----------------------- | --------------------- | ---------------------------------- | ------------------ |
+| `GET /api/v1/branches/:id/config`   | Público                 | —                     | `{ isOpen }`                       | 400, 404           |
+| `PATCH /api/v1/branches/:id/config` | GERENTE de esa sucursal | `{ isOpen: boolean }` | `{ isOpen, updatedAt, updatedBy }` | 400, 401, 403, 404 |
+
+- **Autorización.** Solo `BRANCH_ADMIN` (GERENTE) con la sucursal de la ruta asignada, según la sección 2.7 de la HU. `GENERAL_MANAGER` recibe 403: esa fila de la matriz no lo incluye.
+- **Origen del rol y la sucursal.** El JWT identifica al usuario y `JwtAuthGuard` lo relee de la base, por lo que un gerente trasladado o degradado pierde el acceso sin esperar a que expire su token. Una sucursal enviada en el cuerpo responde 400.
+- **Orden de las validaciones.** El permiso se revisa antes de buscar la sucursal para que un gerente ajeno no pueda averiguar si un id existe. Por eso recibe 403 también con un id inexistente.
+- **Auditoría.** Cada PATCH aceptado registra autor y fecha, aunque repita el estado vigente.
+- **Sucursal sin configuración.** Si está activa, el PATCH crea su configuración. Mientras no exista, el GET responde 404 en lugar de suponer que está abierta.
+- **Pendiente para BE-02.** El rechazo de pedidos con 409 se implementa al crear pedidos, consultando `isOpen` dentro de la misma transacción.
+- **Pendiente para FE-11.** La vista debe mostrar la última modificación y el usuario, pero el GET público solo expone `isOpen`: esos datos llegan únicamente en la respuesta del PATCH.
+
 ## Diagrama ER
 
 ```mermaid
