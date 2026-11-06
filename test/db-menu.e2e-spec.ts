@@ -181,6 +181,67 @@ describe.sequential('BE-1.2.1: menú público contra PostgreSQL', () => {
     return response.body as MenuResponseDto;
   }
 
+  it('BE-01: consulta pública en inglés con precios y aislamiento por sucursal', async () => {
+    const first = await request(app.getHttpServer())
+      .get('/api/v1/dishes')
+      .query({ branchId: branches[0], status: 'active' })
+      .expect(200);
+    const second = await request(app.getHttpServer())
+      .get('/api/v1/dishes')
+      .query({ branchId: branches[1] })
+      .expect(200);
+    expect(
+      first.body.find((dish: { name: string }) => dish.name === 'Ramen'),
+    ).toMatchObject({
+      branchId: branches[0],
+      price: '8.50',
+      isAvailable: true,
+    });
+    expect(
+      second.body.find((dish: { name: string }) => dish.name === 'Ramen'),
+    ).toMatchObject({ branchId: branches[1], price: '13.00' });
+    expect(first.body.map((dish: { name: string }) => dish.name)).not.toEqual(
+      expect.arrayContaining(['Gyozas', 'Oculto']),
+    );
+  });
+
+  it('BE-01: excluye eliminados y no disponibles al releer PostgreSQL', async () => {
+    await client.query(
+      "UPDATE dishes SET is_deleted=(name='Ramen'), is_available=(name<>'Agua') WHERE branch_id=$1",
+      [branches[0]],
+    );
+    try {
+      const response = await request(app.getHttpServer())
+        .get('/api/v1/dishes')
+        .query({ branchId: branches[0] })
+        .expect(200);
+      expect(
+        response.body.map((dish: { name: string }) => dish.name),
+      ).not.toEqual(expect.arrayContaining(['Ramen', 'Agua']));
+    } finally {
+      await client.query(
+        'UPDATE dishes SET is_deleted=false, is_available=true WHERE branch_id=$1',
+        [branches[0]],
+      );
+    }
+  });
+
+  it('BE-01: diferencia menú vacío, sucursal inexistente y entrada inválida', async () => {
+    await request(app.getHttpServer())
+      .get('/api/v1/dishes')
+      .query({ branchId: branches[2] })
+      .expect(200, []);
+    await request(app.getHttpServer())
+      .get('/api/v1/dishes')
+      .query({ branchId: randomUUID() })
+      .expect(404);
+    await request(app.getHttpServer()).get('/api/v1/dishes').expect(400);
+    await request(app.getHttpServer())
+      .get('/api/v1/dishes')
+      .query({ branchId: branches[0], status: 'inactive' })
+      .expect(400);
+  });
+
   it('responde sin token con sucursal y claves JSON en español', async () => {
     const body = await menu();
     expect(body.sucursal).toEqual({
@@ -379,7 +440,6 @@ describe.sequential('BE-1.2.1: menú público contra PostgreSQL', () => {
     );
   });
 
-
   it('QA-01: permite consultar el menú con un Bearer inválido porque la ruta es pública', async () => {
     const response = await request(app.getHttpServer())
       .get(`/api/v1/sucursales/${branches[0]}/menu`)
@@ -403,9 +463,7 @@ describe.sequential('BE-1.2.1: menú público contra PostgreSQL', () => {
 
     const spy = vi
       .spyOn(checker, 'findSufficientDishIds')
-      .mockRejectedValueOnce(
-        new Error('Fallo simulado del verificador'),
-      );
+      .mockRejectedValueOnce(new Error('Fallo simulado del verificador'));
 
     try {
       const response = await request(app.getHttpServer())
@@ -414,25 +472,16 @@ describe.sequential('BE-1.2.1: menú público contra PostgreSQL', () => {
 
       const body = response.body as MenuResponseDto;
 
-      const dishes = body.categorias.flatMap(
-        (category) => category.platillos,
-      );
+      const dishes = body.categorias.flatMap((category) => category.platillos);
 
       expect(dishes.length).toBeGreaterThan(0);
 
-      expect(
-        dishes.every((dish) => dish.disponible === false),
-      ).toBe(true);
+      expect(dishes.every((dish) => dish.disponible === false)).toBe(true);
 
       expect(spy).toHaveBeenCalledTimes(1);
-      expect(spy).toHaveBeenCalledWith(
-        branches[0],
-        expect.any(Array),
-      );
+      expect(spy).toHaveBeenCalledWith(branches[0], expect.any(Array));
     } finally {
       spy.mockRestore();
     }
   });
-
-
 });

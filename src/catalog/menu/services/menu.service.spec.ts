@@ -30,6 +30,7 @@ describe('MenuService', () => {
       description: null,
       price: new Prisma.Decimal('8.5'),
       status: 'AVAILABLE',
+      isAvailable: true,
       category: { id: 'main', name: 'Platos fuertes', displayOrder: 2 },
       ...overrides,
     };
