@@ -4,6 +4,24 @@ import { Prisma, type BranchConfig } from '@PrismaClient';
 import { BranchNotFoundError } from '../errors/index.js';
 
 const FOREIGN_KEY_VIOLATION = 'P2003';
+const BRANCH_FOREIGN_KEY = 'branch_configs_branch_id_fkey';
+
+// Con driver adapter, Prisma no llena meta.field_name: la restricción viaja aquí.
+interface ForeignKeyViolationMeta {
+  driverAdapterError?: { cause?: { constraint?: { index?: string } } };
+}
+
+function isBranchForeignKeyViolation(error: unknown): boolean {
+  if (
+    !(error instanceof Prisma.PrismaClientKnownRequestError) ||
+    error.code !== FOREIGN_KEY_VIOLATION
+  )
+    return false;
+  const meta = error.meta as ForeignKeyViolationMeta | undefined;
+  return (
+    meta?.driverAdapterError?.cause?.constraint?.index === BRANCH_FOREIGN_KEY
+  );
+}
 
 @Injectable()
 export class BranchConfigRepository {
@@ -37,10 +55,7 @@ export class BranchConfigRepository {
         });
       });
     } catch (error) {
-      if (
-        error instanceof Prisma.PrismaClientKnownRequestError &&
-        error.code === FOREIGN_KEY_VIOLATION
-      )
+      if (isBranchForeignKeyViolation(error))
         throw new BranchNotFoundError(branchId);
       throw error;
     }
