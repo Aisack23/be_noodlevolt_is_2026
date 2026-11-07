@@ -1,5 +1,6 @@
 
 import { Module } from '@nestjs/common';
+import { AccountsOrdersModule } from '@AccountsOrders';
 import {
   ReviewRepository,
   PointsRuleRepository,
@@ -10,6 +11,7 @@ import {
 } from '@CustomerFeatures/repositories';
 
 @Module({
+  imports: [AccountsOrdersModule],
   providers: [
     ReviewRepository,
     PointsRuleRepository,
