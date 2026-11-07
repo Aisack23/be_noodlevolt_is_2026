@@ -122,6 +122,12 @@ Se conserva `operationId String @unique @default(uuid())`, obligatorio. El UUID 
 
 El orden de categorías del menú es displayOrder, nombre e ID como desempates. El campo no es único ni tiene CHECK de positividad: categorías adicionales pueden conservar el default 0 y compartir orden. La migración `20261102055433_orden_presentacion_categorias` agrega el campo sin modificar migraciones anteriores; las categorías existentes reciben 0 hasta ejecutar el seed o asignarles un orden explícito.
 
+## Reseñas y validación de rating
+
+La nueva migración `20261106235931_resenas_check_rating` agrega la restricción `reviews_rating_range` sobre `reviews.rating` con `CHECK (rating BETWEEN 1 AND 5)`. No se introduce ningún campo nuevo para promedio ni agregación: el valor promedio se calcula en agregación con `AVG(rating)` sobre `reviews` y no se guarda como columna derivada. El documento de decisiones mantiene el modelo simple y evita campos redundantes.
+
+`reviews.order_id` sigue siendo único (`reviews_order_id_key`), de modo que cada pedido puede tener, como máximo, una reseña. La combinación permite distinguir pedidos `DELIVERED` con y sin reseña, y además soporta el caso `PENDING` sin reseña, sin redefinir la entidad ni agregar una nueva tabla por estado.
+
 ## Reversión
 
 `down.sql` se genera con `prisma migrate diff --from-schema <posterior> --to-schema <anterior> --script` y se completa con los CHECK y protecciones de enums. Rechaza usuarios INVENTORY_MANAGER y mesas NEEDS_CLEANING todavía en uso. En una transacción retira los CHECK y UNIQUE propios, reconstruye los enums anteriores y restaura sus defaults. No convierte ni elimina filas.
