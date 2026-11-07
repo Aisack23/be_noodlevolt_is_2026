@@ -7,12 +7,12 @@ import {
 } from '@nestjs/common';
 import { OrderRepository } from '@AccountsOrders/repositories';
 import { BranchRepository } from '@Branches/repositories';
-import { OrderStatus, type Review, type User } from '@PrismaClient';
+import { OrderStatus, type Review, type User, UserRole } from '@PrismaClient';
 import { CreateReviewDto } from '../dto/index.js';
 import { ReviewAlreadyExistsError } from '../errors/index.js';
 import { ReviewRepository } from '../repositories/index.js';
 
-type ReviewActor = Pick<User, 'id'>;
+type ReviewActor = Pick<User, 'id' | 'role'>;
 
 @Injectable()
 export class ReviewsService {
@@ -31,6 +31,10 @@ export class ReviewsService {
     review: Review;
     branchRating: { average: number | null; count: number };
   }> {
+    if (user.role !== UserRole.CLIENT) {
+      throw new ForbiddenException('Solo los clientes pueden crear reseñas.');
+    }
+
     const order = await this.orderRepository.findById(dto.orderId);
     if (!order) throw new NotFoundException('El pedido no existe.');
     if (order.customerId !== user.id)

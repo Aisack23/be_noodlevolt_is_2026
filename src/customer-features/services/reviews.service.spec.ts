@@ -8,6 +8,7 @@ import { OrderRepository } from '@AccountsOrders/repositories';
 import { BranchRepository } from '@Branches/repositories';
 import {
   OrderStatus,
+  UserRole,
   type Branch,
   type Order,
   type Review,
@@ -19,7 +20,7 @@ import { ReviewRepository } from '../repositories/index.js';
 import { ReviewsService } from './reviews.service.js';
 
 describe('ReviewsService', () => {
-  const user: Pick<User, 'id'> = { id: 'user-1' };
+  const user: Pick<User, 'id' | 'role'> = { id: 'user-1', role: UserRole.CLIENT };
   const branchId = 'branch-1';
   const orderId = 'order-1';
   const dto: CreateReviewDto = {
@@ -96,6 +97,13 @@ describe('ReviewsService', () => {
       ],
     }).compile();
     service = module.get(ReviewsService);
+  });
+
+  it('403 si el usuario no es cliente', async () => {
+    await expect(
+      service.create({ ...user, role: UserRole.WAITER }, dto),
+    ).rejects.toThrow(ForbiddenException);
+    expect(orderRepository.findById).not.toHaveBeenCalled();
   });
 
   it('404 si el pedido no existe', async () => {
