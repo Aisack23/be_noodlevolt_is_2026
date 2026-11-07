@@ -1,7 +1,10 @@
 
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '@Prisma/services';
-import { Review } from '@PrismaClient';
+import { ReviewAlreadyExistsError } from '@CustomerFeatures/errors';
+import { Prisma, type Review } from '@PrismaClient';
+
+const UNIQUE_CONSTRAINT_VIOLATION = 'P2002';
 
 export interface CreateReviewData {
   orderId: string;
@@ -20,8 +23,18 @@ export interface UpdateReviewData {
 export class ReviewRepository {
   constructor(private readonly prisma: PrismaService) {}
 
-  create(data: CreateReviewData): Promise<Review> {
-    return this.prisma.review.create({ data });
+  async create(data: CreateReviewData): Promise<Review> {
+    try {
+      return await this.prisma.review.create({ data });
+    } catch (error) {
+      if (
+        error instanceof Prisma.PrismaClientKnownRequestError &&
+        error.code === UNIQUE_CONSTRAINT_VIOLATION
+      ) {
+        throw new ReviewAlreadyExistsError(data.orderId);
+      }
+      throw error;
+    }
   }
 
   findById(id: string): Promise<Review | null> {
@@ -33,6 +46,17 @@ export class ReviewRepository {
   findByOrder(orderId: string): Promise<Review | null> {
     return this.prisma.review.findUnique({
       where: { orderId },
+    });
+  }
+
+  aggregateByBranch(branchId: string): Promise<{
+    _avg: { rating: number | null };
+    _count: { _all: number };
+  }> {
+    return this.prisma.review.aggregate({
+      where: { branchId },
+      _avg: { rating: true },
+      _count: { _all: true },
     });
   }
 
