@@ -17,7 +17,7 @@ CREATE TABLE "loyalty_accounts" (
 
 -- Se preservan los canjes y ajustes con signo que suma el repositorio existente.
 ALTER TABLE "points_movements" ADD CONSTRAINT "points_movements_earn_positive"
-    CHECK ("type" <> 'EARN' OR "points" > 0);
+    CHECK ("type" <> 'EARN' OR ("points" > 0 AND "payment_id" IS NOT NULL));
 
 -- La unicidad parcial conserva Payment.pointsMovements y permite otros tipos.
 CREATE UNIQUE INDEX "points_movements_one_earn_per_payment"
