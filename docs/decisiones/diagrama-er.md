@@ -103,7 +103,7 @@ erDiagram
 
 ## DB-09: notificaciones internas
 
-`Notification.userId` (`user_id`) equivale a `recipientId` del PDF. Se conserva por compatibilidad con NotificationRepository. El servicio BE-09 obtiene el destinatario de Order.customerId. La sucursal se obtiene de Order.branchId.
+`Notification.userId` (`user_id`) equivale a `recipientId` del PDF. Se conserva por compatibilidad con NotificationRepository. BE-09 obtiene el destinatario de Order.customerId y verifica que sea el due√±o del pedido. La sucursal se obtiene de Order.branchId.
 
 ```mermaid
 erDiagram
@@ -117,15 +117,17 @@ erDiagram
         varchar type
         varchar title
         text message
+        varchar reference_type "nullable"
+        uuid reference_id "nullable"
         boolean is_read "default false"
         timestamptz created_at
     }
 ```
 
-Clave de aviso: `PEDIDO_LISTO:<orderId>`. UNIQUE(user_id,event_key) evita duplicados incluso si el aviso ya fue leÌdo. CHECK exige pedido y clave no vacÌa para PEDIDO_LISTO; otros tipos conservan las referencias genÈricas existentes. Las notificaciones anteriores incompatibles hacen fallar la migraciÛn sin borrado autom·tico.
+Clave de aviso: `PEDIDO_LISTO:<orderId>:<userId>`. UNIQUE(user_id,event_key) evita duplicados incluso si el aviso ya fue le√≠do. Para PEDIDO_LISTO, el CHECK exige pedido y clave no nulos y la coincidencia exacta de esa identidad. Otros tipos conservan las referencias gen√©ricas existentes. La migraci√≥n rechaza duplicados y avisos PEDIDO_LISTO sin pedido sin cambios parciales ni borrado autom√°tico.
 
-Õndices agregados: (user_id,created_at), (order_id). Se conserva (user_id,is_read,created_at). El estado vacÌo corresponde a cero filas, sin registros artificiales.
+√çndices agregados: (user_id,created_at), (order_id). Se conserva (user_id,is_read,created_at). El estado vac√≠o corresponde a cero filas, sin registros artificiales.
 
-Seed independiente: `npx tsx prisma/seeds/run-notifications.ts`. Ejecutar ˙nicamente contra la base propia. `down.sql` retira las restricciones y la columna order_id; esa asociaciÛn no se conserva tras revertir.
+Seed: `npm run db:seed:notifications`. Requiere ejecutar antes los seeds base y cat√°logo. Reutiliza demo@example.com y BASE_BRANCHES; agrega en cada sucursal el pedido DB09-READY, con estado READY, una l√≠nea de dos ramen y total decimal calculado de su precio. No crea clientes ni sucursales. Los reintentos conservan los mismos pedidos, l√≠neas y avisos.
 
-Validacion DB-09: lint y build correctos; 92 pruebas unitarias y 7 pruebas DB-09 correctas, incluida NotificationRepository. test:migrations verifica aplicar/revertir/reaplicar correctamente. Suites completas: fallo existente de db-orders por users.updated_at; db-catalog-orders espera NUMERIC(8,2), mientras develop define NUMERIC(10,2). No se modifican esas areas.
+`down.sql` rechaza la reversi√≥n si hay notificaciones con order_id no nulo para evitar perder su asociaci√≥n. Deben respaldarse y retirarse expl√≠citamente antes de revertir. Si no hay asociaciones, retira las restricciones y la columna order_id.
