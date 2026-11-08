@@ -8,6 +8,7 @@ import { PrismaService } from '@Prisma/services';
 import { Prisma } from '@PrismaClient';
 import type { CreateOrderDto } from '../dto/create-order.dto.js';
 import type { OrderResponseDto } from '../dto/order-response.dto.js';
+import { assertExpectedPrice } from '../services/order-pricing.js';
 
 const orderSelect = {
   id: true,
@@ -17,6 +18,8 @@ const orderSelect = {
   requestHash: true,
   status: true,
   total: true,
+  paymentMode: true,
+  pickupAt: true,
   items: {
     select: { dishId: true, dishName: true, quantity: true, unitPrice: true },
     orderBy: { dishId: 'asc' },
@@ -114,6 +117,7 @@ export class OrdersRepository {
     const byId = new Map(dishes.map((dish) => [dish.id, dish]));
     return input.lines.map((line) => {
       const dish = byId.get(line.dishId)!;
+      assertExpectedPrice(line.expectedPrice, dish.price.toFixed(2), dish.id);
       return {
         dishId: dish.id,
         dishName: dish.name,
@@ -135,6 +139,8 @@ function toResponse(order: StoredOrder): OrderResponseDto {
     operationKey: order.operationId,
     status: order.status,
     total: order.total.toFixed(2),
+    paymentMode: order.paymentMode,
+    pickupAt: order.pickupAt?.toISOString() ?? null,
     lines: order.items.map((item) => ({
       dishId: item.dishId,
       name: item.dishName,

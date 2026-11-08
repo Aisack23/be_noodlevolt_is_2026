@@ -18,6 +18,17 @@ export class OrderLineResponseDto {
 }
 
 export class OrderResponseDto {
+  @ApiProperty({ enum: ['ONLINE', 'AT_COUNTER'], nullable: true })
+  paymentMode!: 'ONLINE' | 'AT_COUNTER' | null;
+
+  @ApiProperty({
+    type: String,
+    format: 'date-time',
+    nullable: true,
+    description: 'Retiro estimado a los 20 minutos; ISO 8601 UTC.',
+  })
+  pickupAt!: string | null;
+
   @ApiProperty({ format: 'uuid' })
   id!: string;
 

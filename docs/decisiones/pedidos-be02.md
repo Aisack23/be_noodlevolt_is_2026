@@ -121,3 +121,11 @@ npm run test:migrations
 ```
 
 Rama: feat/BE-02-orders. Destino: develop. El usuario crea el PR y asigna reviewer.
+
+
+## Ampliación BE-2.2.1
+
+El contrato de creación ahora permite paymentMode ONLINE/AT_COUNTER (default
+ONLINE), expectedPrice opcional por línea y devuelve pickupAt. Consultar
+[pedido-llevar.md](pedido-llevar.md) para el contrato consolidado y los resultados
+actuales de pruebas. Se corrige la modalidad obligatoria para TAKEOUT.

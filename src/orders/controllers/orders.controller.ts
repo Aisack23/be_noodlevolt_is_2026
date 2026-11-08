@@ -27,6 +27,8 @@ export class OrdersController {
   @Post()
   @ApiOperation({
     summary: 'Registra un pedido para llevar del cliente autenticado.',
+    description:
+      'Solo CLIENT. Modalidad ONLINE o AT_COUNTER, estado inicial PENDING y retiro estimado en 20 minutos. El total usa precios históricos del servidor. expectedPrice opcional detecta cambios con 409. operationKey permite reintentos 200 sin duplicar.',
   })
   @ApiCreatedResponse({ type: OrderResponseDto })
   @ApiOkResponse({
