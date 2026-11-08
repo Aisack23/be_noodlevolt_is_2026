@@ -132,11 +132,11 @@ describe.sequential(
         'dishes_price_check',
       );
     });
-    it('limita el precio de la línea a NUMERIC(8,2)', async () => {
-      expect((await createLine(1, null, '999999.99')).rows[0].unit_price).toBe(
-        '999999.99',
+    it('limita el precio de la línea a NUMERIC(10,2)', async () => {
+      expect((await createLine(1, null, '99999999.99')).rows[0].unit_price).toBe(
+        '99999999.99',
       );
-      await db.rejectWrite(() => createLine(1, null, '1000000.00'), '22003');
+      await db.rejectWrite(() => createLine(1, null, '100000000.00'), '22003');
     });
     it('acepta nombre de 100 y descripción de 300 caracteres', async () => {
       const dish = (
