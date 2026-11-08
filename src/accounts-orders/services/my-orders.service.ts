@@ -3,7 +3,7 @@ import {
   Inject,
   Injectable,
 } from '@nestjs/common';
-import { OrderStatus, type User, UserRole } from '@PrismaClient';
+import { type User, UserRole } from '@PrismaClient';
 import { OrderRepository } from '@AccountsOrders/repositories';
 import type { MyOrderResponseDto } from '../dto/my-order-response.dto.js';
 import type { MyOrdersQueryDto } from '../dto/my-orders-query.dto.js';
@@ -25,25 +25,21 @@ export class MyOrdersService {
       50,
     );
 
-    return rows.map((row) => {
-      const total = row.total == null ? '0.00' : String(row.total);
-      const normalizedTotal =
-        typeof total === 'string' && total.includes('.')
-          ? total
-          : `${total}.00`;
+    return rows.map((row) => ({
+      id: row.id,
+      orderNumber: row.orderNumber,
+      status: row.status,
+      total: this.formatMoney(row.total),
+      createdAt: row.createdAt,
+      branchId: row.branchId,
+      branchName: row.branch.name,
+      review: row.review ? { id: row.review.id, rating: row.review.rating } : null,
+    }));
+  }
 
-      return {
-        id: row.id,
-        orderNumber: row.orderNumber,
-        status: row.status,
-        total: normalizedTotal,
-        createdAt: row.createdAt,
-        branchId: row.branchId,
-        branchName: row.branch.name,
-        review: row.review
-          ? { id: row.review.id, rating: row.review.rating }
-          : null,
-      };
-    });
+  private formatMoney(value: unknown): string {
+    if (value == null) return '0.00';
+    const amount = Number(String(value));
+    return Number.isFinite(amount) ? amount.toFixed(2) : '0.00';
   }
 }
