@@ -199,6 +199,44 @@ async function checkCategoryWithoutBranch(up) {
 }
 
 async function checkRefusal(directory, down) {
+  if (directory === '20261108120000_loyalty_accounts') {
+    const userId = randomUUID();
+    await client.query(
+      "INSERT INTO users (id,email,name,password_hash,updated_at) VALUES ($1,$2,'Lealtad','test',now())",
+      [userId, userId + '@example.com'],
+    );
+    await client.query('INSERT INTO loyalty_accounts (user_id) VALUES ($1)', [
+      userId,
+    ]);
+    const before = await schema();
+    const account = (
+      await client.query('SELECT * FROM loyalty_accounts WHERE user_id=$1', [
+        userId,
+      ])
+    ).rows;
+    assert.equal(account.length, 1);
+    await assert.rejects(client.query(down), { code: 'P0001' });
+    await client.query('ROLLBACK');
+    assert.deepEqual(
+      await schema(),
+      before,
+      'El down rechazado de DB-07 debe conservar el schema',
+    );
+    assert.deepEqual(
+      (
+        await client.query('SELECT * FROM loyalty_accounts WHERE user_id=$1', [
+          userId,
+        ])
+      ).rows,
+      account,
+      'El down rechazado de DB-07 debe conservar la cuenta y sus fechas',
+    );
+    await client.query('DELETE FROM loyalty_accounts WHERE user_id=$1', [
+      userId,
+    ]);
+    await client.query('DELETE FROM users WHERE id=$1', [userId]);
+    return;
+  }
   const enums = directory.endsWith('base_anexo_a');
   const branchColumn = directory.endsWith('catalogo_pedidos_hu');
   const categoryBranch = directory.endsWith(CATEGORY_COPY_MIGRATION);

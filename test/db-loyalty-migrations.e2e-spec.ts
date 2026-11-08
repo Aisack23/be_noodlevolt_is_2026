@@ -71,6 +71,19 @@ describe.sequential('DB-07: migración y reversión sin pérdida de datos', () =
     for (const sql of queries) snapshot.push((await client.query(sql)).rows);
     return snapshot;
   }
+  async function payment() {
+    const branchId = randomUUID();
+    const id = randomUUID();
+    await client.query(
+      "INSERT INTO branches (id,name,address) VALUES ($1,$2,'Prueba')",
+      [branchId, branchId],
+    );
+    await client.query(
+      "INSERT INTO payments (id,branch_id,subtotal,total_paid,status) VALUES ($1,$2,8.75,8.75,'PAID')",
+      [id, branchId],
+    );
+    return id;
+  }
   function movement(
     points: number,
     type = 'EARN',
@@ -106,7 +119,7 @@ describe.sequential('DB-07: migración y reversión sin pérdida de datos', () =
     expect(await schema()).toEqual(after);
   });
   it('inicializa saldos desde el historial con signo y conserva todos los movimientos', async () => {
-    await movement(8);
+    await movement(8, 'EARN', await payment());
     await movement(-3, 'REDEEM');
     await movement(-1, 'ADJUSTMENT');
     const other = randomUUID();
@@ -114,7 +127,7 @@ describe.sequential('DB-07: migración y reversión sin pérdida de datos', () =
       `INSERT INTO users (id,email,name,password_hash,updated_at) VALUES ($1,$2,'Otro','test',now())`,
       [other, `${other}@example.com`],
     );
-    await movement(7, 'EARN', null, other);
+    await movement(7, 'EARN', await payment(), other);
     const rows = await history();
     await client.query(up);
     const balances = await client.query<{ user_id: string; points: number }>(
@@ -147,34 +160,29 @@ describe.sequential('DB-07: migración y reversión sin pérdida de datos', () =
     },
   );
   it('rechaza acumulaciones duplicadas preexistentes y conserva el esquema anterior', async () => {
-    const branch = randomUUID();
-    const payment = randomUUID();
-    await client.query(
-      "INSERT INTO branches (id,name,address) VALUES ($1,$2,'Prueba')",
-      [branch, branch],
-    );
-    await client.query(
-      `INSERT INTO payments (id,branch_id,subtotal,total_paid,status) VALUES ($1,$2,8.75,8.75,'PAID')`,
-      [payment, branch],
-    );
-    await movement(8, 'EARN', payment);
-    await movement(8, 'EARN', payment);
+    const paymentId = await payment();
+    await movement(8, 'EARN', paymentId);
+    await movement(8, 'EARN', paymentId);
     await rejectsUp('23505', 'points_movements_one_earn_per_payment');
   });
   it.each([0, -1])(
     'rechaza EARN preexistente de %i puntos sin cambios parciales',
     async (points) => {
-      await movement(points);
+      await movement(points, 'EARN', await payment());
       await rejectsUp('23514', 'points_movements_earn_positive');
     },
   );
+  it('rechaza EARN preexistente sin pago sin cambios parciales', async () => {
+    await movement(8);
+    await rejectsUp('23514', 'points_movements_earn_positive');
+  });
   it('rechaza un saldo histórico negativo sin eliminar canjes', async () => {
     await movement(-1, 'REDEEM');
     await rejectsUp('23514', 'loyalty_accounts_points_nonnegative');
   });
   it('rechaza desbordamiento de INT sin truncar ni perder puntos', async () => {
-    await movement(2_147_483_647);
-    await movement(1);
+    await movement(2_147_483_647, 'EARN', await payment());
+    await movement(1, 'EARN', await payment());
     await rejectsUp('22003');
   });
 });

@@ -116,8 +116,9 @@ describe.sequential('DB-07: cuentas y movimientos de lealtad', () => {
     'rechaza EARN de %i puntos y permite canjes con signo',
     async (points) => {
       const id = await user();
+      const paymentId = await payment();
       await db.rejectWrite(
-        () => movement(id, points),
+        () => movement(id, points, paymentId),
         '23514',
         'points_movements_earn_positive',
       );
@@ -170,12 +171,16 @@ describe.sequential('DB-07: cuentas y movimientos de lealtad', () => {
     await movement(id, -1, paymentId, 'ADJUSTMENT');
     await movement(id, -2, paymentId, 'REDEEM');
     await movement(id, 4, await payment());
-    await movement(id, 1);
-    await movement(id, 1);
+    await db.rejectWrite(
+      () => movement(id, 1),
+      '23514',
+      'points_movements_earn_positive',
+    );
   });
   it('conserva las FK de cliente y pago del movimiento', async () => {
+    const paymentId = await payment();
     await db.rejectWrite(
-      () => movement(randomUUID(), 1),
+      () => movement(randomUUID(), 1, paymentId),
       '23503',
       'points_movements_customer_id_fkey',
     );
@@ -185,7 +190,7 @@ describe.sequential('DB-07: cuentas y movimientos de lealtad', () => {
       '23503',
       'points_movements_payment_id_fkey',
     );
-    await movement(id, 1);
+    await movement(id, 1, paymentId);
     await db.rejectWrite(
       () => db.client.query('DELETE FROM users WHERE id=$1', [id]),
       '23001',
