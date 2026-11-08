@@ -24,7 +24,8 @@ Respuesta: `id`, `branchId`, `operationKey`, `status`, `total`, `lines`.
 Cada línea incluye `dishId`, `name`, `quantity`, `unitPrice`, `subtotal`.
 Los importes son strings con dos decimales; se calculan con Prisma.Decimal.
 El estado inicial persistido es `PENDING`, equivalente a PENDIENTE.
-Crear no aprueba ni registra un pago.
+Crear no aprueba ni registra un pago. La modalidad interna es ONLINE, requerida
+por la restricción existente de pedidos TAKEOUT; no cambia el estado inicial PENDING.
 
 - 201: nuevo pedido.
 - 200: reintento de la misma operación con contenido semánticamente idéntico.

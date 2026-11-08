@@ -67,6 +67,7 @@ export class OrdersRepository {
             requestHash,
             total,
             type: 'TAKEOUT',
+            paymentMode: 'ONLINE',
             status: 'PENDING',
             items: { create: lines },
           },
