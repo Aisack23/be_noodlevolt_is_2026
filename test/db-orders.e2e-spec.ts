@@ -112,7 +112,7 @@ describe.sequential('BE-02: creación transaccional de pedidos', () => {
   function body(operationKey = randomUUID()) {
     return { branchId, operationKey, lines: [{ dishId, quantity: 2 }] };
   }
-  function post(payload: unknown, auth = token) {
+  function post(payload: object | string, auth = token) {
     return request(app!.getHttpServer())
       .post('/api/v1/orders')
       .set('Authorization', `Bearer ${auth}`)
