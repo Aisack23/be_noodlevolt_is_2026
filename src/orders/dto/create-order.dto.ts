@@ -5,14 +5,28 @@ import {
   ArrayUnique,
   IsArray,
   IsInt,
+  IsIn,
+  IsString,
+  Matches,
+  ValidateIf,
   IsUUID,
   Max,
   Min,
   ValidateNested,
 } from 'class-validator';
-import { ApiProperty } from '@nestjs/swagger';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
 export class CreateOrderLineDto {
+  @ApiPropertyOptional({
+    type: String,
+    example: '8.50',
+    description: 'Precio visto por el cliente; si cambió, responde 409.',
+  })
+  @ValidateIf((_object, value: unknown) => value !== undefined)
+  @IsString()
+  @Matches(/^\d{1,8}(?:\.\d{1,2})?$/)
+  expectedPrice?: string;
+
   @ApiProperty({ format: 'uuid' })
   @IsUUID()
   dishId!: string;
@@ -25,6 +39,11 @@ export class CreateOrderLineDto {
 }
 
 export class CreateOrderDto {
+  @ApiPropertyOptional({ enum: ['ONLINE', 'AT_COUNTER'], default: 'ONLINE' })
+  @ValidateIf((_object, value: unknown) => value !== undefined)
+  @IsIn(['ONLINE', 'AT_COUNTER'])
+  paymentMode?: 'ONLINE' | 'AT_COUNTER';
+
   @ApiProperty({ format: 'uuid' })
   @IsUUID()
   branchId!: string;

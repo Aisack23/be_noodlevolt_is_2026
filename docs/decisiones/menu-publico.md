@@ -67,8 +67,6 @@ Para conectar BE-5.1.1, `InventoryModule` debe registrar y exportar un provider 
 
 ## Registro y alcance
 
-CatalogModule exporta INGREDIENT_AVAILABILITY_CHECKER y el módulo de pedidos importa CatalogModule para reutilizar la misma instancia. Al conectar BE-5.1.1 mediante useExisting, el cambio de provider aplica al menú y a los pedidos a la vez.
-
 Se reutilizan CatalogModule y los alias existentes. `src/catalog/catalog.module.ts` registra controlador, servicio, repositorio y provider del puerto. El orden de categorías se incorpora al schema con una migración nueva y se configura en el seed de catálogo. No se modifican migraciones anteriores, repositorios previos, autenticación ni configuración de tests.
 
 ## Patrón utilizado

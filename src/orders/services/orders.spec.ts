@@ -1,6 +1,10 @@
 import { randomBytes } from 'node:crypto';
 import { Test } from '@nestjs/testing';
-import { ForbiddenException, ValidationPipe } from '@nestjs/common';
+import {
+  ConflictException,
+  ForbiddenException,
+  ValidationPipe,
+} from '@nestjs/common';
 import type { INestApplication } from '@nestjs/common';
 import { APP_GUARD, Reflector } from '@nestjs/core';
 import { JwtService } from '@nestjs/jwt';
@@ -10,6 +14,7 @@ import type { UsersService } from '@Users/services';
 import { OrdersController } from '../controllers/orders.controller.js';
 import { OrdersRepository } from '../repositories/orders.repository.js';
 import { OrdersService } from './orders.service.js';
+import { assertExpectedPrice } from './order-pricing.js';
 import { normalizeOrder, orderRequestHash } from './order-request.js';
 
 vi.mock('../repositories/orders.repository.js', () => ({
@@ -93,7 +98,7 @@ describe('BE-02: pedidos', () => {
     await post().expect(201, order);
     expect(repository.create).toHaveBeenCalledWith(
       customerId,
-      input,
+      normalizeOrder(input),
       expect.stringMatching(/^[a-f0-9]{64}$/),
     );
   });
@@ -138,6 +143,12 @@ describe('BE-02: pedidos', () => {
     ).toThrow(ForbiddenException);
   });
   it.each([
+    { ...input, paymentMode: 'CASH' },
+    { ...input, paymentMode: null },
+    { ...input, lines: [{ ...input.lines[0], expectedPrice: 8.5 }] },
+    { ...input, lines: [{ ...input.lines[0], expectedPrice: null }] },
+    { ...input, lines: [{ ...input.lines[0], expectedPrice: '1.999' }] },
+    { ...input, lines: [{ ...input.lines[0], expectedPrice: '-1.00' }] },
     { ...input, userId: customerId },
     { ...input, total: '0.01' },
     { ...input, lines: [] },
@@ -164,6 +175,62 @@ describe('BE-02: pedidos', () => {
       expect(repository.create).not.toHaveBeenCalled();
     },
   );
+  it.each(['ONLINE', 'AT_COUNTER'] as const)(
+    'acepta modalidad %s y precio esperado normalizado',
+    async (paymentMode) => {
+      await post({
+        ...input,
+        paymentMode,
+        lines: [{ ...input.lines[0], expectedPrice: '0008.5' }],
+      }).expect(201);
+      expect(repository.create).toHaveBeenCalledWith(
+        customerId,
+        expect.objectContaining({
+          paymentMode,
+          lines: [{ ...input.lines[0], expectedPrice: '8.50' }],
+        }),
+        expect.any(String),
+      );
+    },
+  );
+  it('mantiene la huella anterior para ONLINE y distingue pago en caja', () => {
+    expect(orderRequestHash(customerId, normalizeOrder(input))).toBe(
+      orderRequestHash(customerId, input),
+    );
+    expect(
+      orderRequestHash(
+        customerId,
+        normalizeOrder({ ...input, paymentMode: 'AT_COUNTER' }),
+      ),
+    ).not.toBe(orderRequestHash(customerId, normalizeOrder(input)));
+  });
+  it.each(['8.5', '08.50', '00000008.50'])(
+    'normaliza precio %s para reintentar sin conflicto',
+    (expectedPrice) => {
+      const normalized = normalizeOrder({
+        ...input,
+        lines: [{ ...input.lines[0], expectedPrice }],
+      });
+      const expected = normalizeOrder({
+        ...input,
+        lines: [{ ...input.lines[0], expectedPrice: '8.50' }],
+      });
+      expect(orderRequestHash(customerId, normalized)).toBe(
+        orderRequestHash(customerId, expected),
+      );
+    },
+  );
+  it('comprueba precio esperado sin usar el importe del navegador para cobrar', () => {
+    expect(() =>
+      assertExpectedPrice(undefined, '8.50', input.lines[0].dishId),
+    ).not.toThrow();
+    expect(() =>
+      assertExpectedPrice('08.5', '8.50', input.lines[0].dishId),
+    ).not.toThrow();
+    expect(() =>
+      assertExpectedPrice('8.50', '9.00', input.lines[0].dishId),
+    ).toThrow(ConflictException);
+  });
   it('normaliza orden de líneas y UUID antes de calcular la huella de idempotencia', () => {
     const first = normalizeOrder({
       ...input,

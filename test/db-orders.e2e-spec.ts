@@ -50,7 +50,7 @@ describe.sequential('BE-02: creación transaccional de pedidos', () => {
       );
       for (const id of [customerId, otherCustomerId]) {
         await client.query(
-          'INSERT INTO users (id,name,email,password_hash,role) VALUES ($1,$2,$3,$4,$5)',
+          'INSERT INTO users (id,name,email,password_hash,role,updated_at) VALUES ($1,$2,$3,$4,$5,CURRENT_TIMESTAMP)',
           [id, 'Test', `${id}@example.com`, 'not-used-for-login', 'CLIENT'],
         );
       }
@@ -119,6 +119,90 @@ describe.sequential('BE-02: creación transaccional de pedidos', () => {
       .send(payload);
   }
 
+  it.each(['ONLINE', 'AT_COUNTER'] as const)(
+    'crea %s pendiente, guarda modalidad y estima retiro en 20 minutos',
+    async (paymentMode) => {
+      const start = Date.now();
+      const response = await post({ ...body(), paymentMode }).expect(201);
+      expect(response.body).toMatchObject({
+        status: 'PENDING',
+        paymentMode,
+        total: '17.00',
+      });
+      const pickup = Date.parse(response.body.pickupAt);
+      expect(pickup).toBeGreaterThanOrEqual(start + 20 * 60 * 1000);
+      expect(pickup).toBeLessThanOrEqual(Date.now() + 20 * 60 * 1000);
+      const stored = await client!.query(
+        'SELECT payment_mode,status FROM orders WHERE id=$1',
+        [response.body.id],
+      );
+      expect(stored.rows[0]).toEqual({
+        payment_mode: paymentMode,
+        status: 'PENDING',
+      });
+    },
+  );
+
+  it('precio esperado cambiado devuelve 409 con precio actual y no persiste el pedido', async () => {
+    const payload = {
+      ...body(),
+      lines: [{ dishId, quantity: 2, expectedPrice: '7.00' }],
+    };
+    const response = await post(payload).expect(409);
+    expect(response.body.prices).toEqual([{ dishId, currentPrice: '8.50' }]);
+    const count = await client!.query(
+      'SELECT count(*)::int AS count FROM orders WHERE operation_id=$1',
+      [payload.operationKey],
+    );
+    expect(count.rows[0].count).toBe(0);
+  });
+
+  it('reintenta precio equivalente y rechaza cambiar modalidad con la misma clave', async () => {
+    const payload = {
+      ...body(),
+      paymentMode: 'ONLINE',
+      lines: [{ dishId, quantity: 2, expectedPrice: '8.5' }],
+    };
+    const first = await post(payload).expect(201);
+    const repeated = await post({
+      ...payload,
+      lines: [{ dishId, quantity: 2, expectedPrice: '08.50' }],
+    }).expect(200);
+    expect(repeated.body).toEqual(first.body);
+    await post({ ...payload, paymentMode: 'AT_COUNTER' }).expect(409);
+  });
+
+  it.each([
+    'is_available=false',
+    'is_deleted=true',
+    "status='SOLD_OUT'",
+    "status='DISABLED'",
+  ])('rechaza platillo no disponible: %s', async (update) => {
+    await client!.query(`UPDATE dishes SET ${update} WHERE id=$1`, [dishId]);
+    await post(body()).expect(409);
+  });
+
+  it('rechaza categoría inactiva', async () => {
+    await client!.query('UPDATE categories SET is_active=false WHERE id=$1', [
+      categoryId,
+    ]);
+    try {
+      await post(body()).expect(409);
+    } finally {
+      await client!.query('UPDATE categories SET is_active=true WHERE id=$1', [
+        categoryId,
+      ]);
+    }
+  });
+
+  it('rechaza sucursal inexistente y platillo inexistente sin crear pedidos', async () => {
+    await post({ ...body(), branchId: randomUUID() }).expect(404);
+    await post({
+      ...body(),
+      lines: [{ dishId: randomUUID(), quantity: 1 }],
+    }).expect(409);
+  });
+
   it('persiste propietario, total y precio histórico sin confiar en el navegador', async () => {
     const response = await post(body()).expect(201);
     expect(response.body).toMatchObject({
@@ -159,7 +243,11 @@ describe.sequential('BE-02: creación transaccional de pedidos', () => {
   it('dos solicitudes simultáneas crean un solo pedido', async () => {
     const payload = body();
     const results = await Promise.all([post(payload), post(payload)]);
-    expect(results.map((result) => result.status).sort()).toEqual([200, 201]);
+    expect(
+      results
+        .map((result) => result.status)
+        .sort((left, right) => left - right),
+    ).toEqual([200, 201]);
     expect(results[0].body.id).toBe(results[1].body.id);
     const count = await client!.query(
       'SELECT count(*)::int AS count FROM orders WHERE operation_id=$1',
