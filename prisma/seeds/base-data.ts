@@ -35,6 +35,11 @@ const USERS = [
     branch: 'NoodleVolt Santa Tecla',
   },
   {
+    role: UserRole.BRANCH_ADMIN,
+    email: 'branch_admin_centro@example.com',
+    branch: 'NoodleVolt Centro',
+  },
+  {
     role: UserRole.GENERAL_MANAGER,
     email: 'general_manager@example.com',
     branch: null,
