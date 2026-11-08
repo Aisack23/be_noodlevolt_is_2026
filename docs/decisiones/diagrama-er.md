@@ -100,3 +100,32 @@ erDiagram
 √çndice del inventario: `branch_ingredients(branch_id, current_stock)`. El stock bajo se calcula y no se guarda. Las reglas est√°n en [inventario-insumos.md](inventario-insumos.md).
 
 √çndices de rese√±as: `reviews(branch_id, created_at)`, `reviews(customer_id, created_at)` y `reviews_order_id_key` como unicidad por pedido. El promedio de —Ä–µ–π—Ç–∏–Ω por sucursal o por pedido se calcula con `AVG(rating)` en agregaci√≥n a demanda; no se persiste un campo `average_rating` ni `review_count` para evitar duplicar datos derivados.
+
+## DB-09: notificaciones internas
+
+`Notification.userId` (`user_id`) equivale a `recipientId` del PDF. Se conserva por compatibilidad con NotificationRepository. El servicio BE-09 obtiene el destinatario de Order.customerId. La sucursal se obtiene de Order.branchId.
+
+```mermaid
+erDiagram
+    users ||--o{ notifications : "destinatario DELETE CASCADE"
+    orders o|--o{ notifications : "pedido DELETE RESTRICT"
+    notifications {
+        uuid id PK
+        uuid user_id FK
+        uuid order_id FK "nullable excepto PEDIDO_LISTO"
+        varchar event_key "UNIQUE con user_id"
+        varchar type
+        varchar title
+        text message
+        boolean is_read "default false"
+        timestamptz created_at
+    }
+```
+
+Clave de aviso: `PEDIDO_LISTO:<orderId>`. UNIQUE(user_id,event_key) evita duplicados incluso si el aviso ya fue leÌdo. CHECK exige pedido y clave no vacÌa para PEDIDO_LISTO; otros tipos conservan las referencias genÈricas existentes. Las notificaciones anteriores incompatibles hacen fallar la migraciÛn sin borrado autom·tico.
+
+Õndices agregados: (user_id,created_at), (order_id). Se conserva (user_id,is_read,created_at). El estado vacÌo corresponde a cero filas, sin registros artificiales.
+
+Seed independiente: `npx tsx prisma/seeds/run-notifications.ts`. Ejecutar ˙nicamente contra la base propia. `down.sql` retira las restricciones y la columna order_id; esa asociaciÛn no se conserva tras revertir.
+
+Validacion DB-09: lint y build correctos; 92 pruebas unitarias y 7 pruebas DB-09 correctas, incluida NotificationRepository. test:migrations verifica aplicar/revertir/reaplicar correctamente. Suites completas: fallo existente de db-orders por users.updated_at; db-catalog-orders espera NUMERIC(8,2), mientras develop define NUMERIC(10,2). No se modifican esas areas.
