@@ -41,7 +41,7 @@ La migración rechaza datos anteriores inválidos; no reasigna personas ni renom
 | Dish.price            | NUMERIC(10,2) según DB-01 y CHECK `dishes_price_check`: mayor que cero              |
 | Dish.branchId         | UUID obligatorio, FK `dishes_branch_id_fkey` a branches con DELETE RESTRICT         |
 | Dish.branchId + name  | UNIQUE `dishes_branch_id_name_key`: permite el mismo nombre en sucursales distintas |
-| OrderItem.unitPrice   | NUMERIC(8,2), snapshot del precio al pedir                                          |
+| OrderItem.unitPrice   | NUMERIC(10,2), igual que Dish.price; snapshot del precio al pedir                   |
 | OrderItem.quantity    | CHECK `order_items_quantity_check`: entero de 1 a 20, inclusivo                     |
 | OrderItem.note        | VARCHAR(200) opcional; el tipo limita la longitud, sin CHECK adicional              |
 | Order.status          | Se agrega PENDING_PAYMENT; el default sigue siendo PENDING                          |
@@ -102,7 +102,7 @@ La migración exige dishes vacía al agregar branch_id NOT NULL. Para datos exis
 
 Hasta que BE-01 cambie la lectura, cambiar solo `isAvailable` no modifica el menú, y no hay CHECK que ate ambos campos: quien escriba platillos debe actualizarlos juntos. BE-01 filtrará `isAvailable=false`, lo que ocultará los agotados que hoy se muestran. Retirar `status` queda para una PR posterior acordada con el equipo.
 
-**Precio.** DB-01 fija `Decimal(10,2)`; el documento de 11 HU no indica un máximo de negocio. Por eso `dishes_price_check` sigue exigiendo solo un valor mayor que cero y el límite efectivo es el del tipo: 99,999,999.99. `OrderItem.unitPrice` sigue en NUMERIC(8,2) porque pertenece a DB-02: hasta alinearlo, un precio de 1,000,000.00 o más no se puede copiar a una línea de pedido.
+**Precio.** DB-01 fija `Decimal(10,2)`; el documento de 11 HU no indica un máximo de negocio. Por eso `dishes_price_check` sigue exigiendo solo un valor mayor que cero y el límite efectivo es el del tipo: 99,999,999.99. `OrderItem.unitPrice` usa el mismo NUMERIC(10,2) desde la migración `20261106190000_order_totals_idempotency`, así que cualquier precio válido del catálogo se copia a la línea de pedido.
 
 La respuesta del menú conserva el formato de `develop`: string con dos decimales (`"8.50"`), como se describe en [menu-publico.md](menu-publico.md). El diagrama está en [diagrama-er.md](diagrama-er.md).
 

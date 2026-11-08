@@ -243,15 +243,18 @@ npm run db:reset
 
 Usuarios de prueba del Anexo A. Clave demo inicial: **`Demo1234!`**.
 
-| Correo                        | Rol               | Sucursal     |
-| ----------------------------- | ----------------- | ------------ |
-| demo@example.com              | CLIENT            | Sin sucursal |
-| waiter@example.com            | WAITER            | Centro       |
-| cook@example.com              | COOK              | Centro       |
-| cashier@example.com           | CASHIER           | Santa Tecla  |
-| inventory_manager@example.com | INVENTORY_MANAGER | Santa Tecla  |
-| branch_admin@example.com      | BRANCH_ADMIN      | Santa Tecla  |
-| general_manager@example.com   | GENERAL_MANAGER   | Sin sucursal |
+| Correo                          | Rol               | Sucursal     |
+| ------------------------------- | ----------------- | ------------ |
+| demo@example.com                | CLIENT            | Sin sucursal |
+| waiter@example.com              | WAITER            | Centro       |
+| cook@example.com                | COOK              | Centro       |
+| cashier@example.com             | CASHIER           | Santa Tecla  |
+| inventory_manager@example.com   | INVENTORY_MANAGER | Santa Tecla  |
+| branch_admin@example.com        | BRANCH_ADMIN      | Santa Tecla  |
+| branch_admin_centro@example.com | BRANCH_ADMIN      | Centro       |
+| general_manager@example.com     | GENERAL_MANAGER   | Sin sucursal |
+
+Los dos BRANCH_ADMIN permiten demostrar el aislamiento: cada gerente recibe 403 al operar sobre la sucursal del otro.
 
 Con DATABASE_URL configurada hacia el PostgreSQL de Docker y las migraciones aplicadas:
 
