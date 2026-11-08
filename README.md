@@ -261,7 +261,7 @@ npm run test:db
 npm run test:migrations
 ```
 
-Para cargar además las 4 categorías y 8 platillos por sucursal: `npm run db:seed:catalog`.
+Para cargar además 4 categorías y 10 platillos por sucursal: `npm run db:seed:catalog`.
 
 El seed conserva usuarios y contraseñas existentes. El verificador de migraciones requiere CREATEDB y usa una base temporal.
 
@@ -312,6 +312,8 @@ Base: `http://localhost:3000/api/v1` · Documentación interactiva: `http://loca
 | `POST` | `/auth/refresh` | — | `200` | Renueva el par de tokens |
 | `POST` | `/auth/logout` | — | `204` | Cierra la sesión |
 | `GET` | `/auth/me` | Bearer | `200` | Usuario autenticado |
+| `POST` | `/reviews` | Bearer | `201` | Crea una reseña para un pedido entregado del cliente autenticado |
+| `GET` | `/branches/:id/rating` | — | `200` | Promedio y cantidad de reseñas de una sucursal |
 
 ### Ejemplos
 
@@ -382,6 +384,50 @@ curl -X POST $BASE/auth/logout \
 ```
 
 Responde `204 No Content`. Es idempotente: repetirlo con un token ya revocado también devuelve `204`, para no convertirse en un oráculo que revele qué tokens existen.
+
+**Crear reseña**
+
+```bash
+curl -X POST $BASE/reviews \
+  -H 'Authorization: Bearer $ACCESS_TOKEN' \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "orderId": "22222222-2222-4222-8222-222222222222",
+    "rating": 5,
+    "comment": "Excelente servicio"
+  }'
+```
+
+```jsonc
+// 201 Created
+{
+  "review": {
+    "id": "11111111-1111-4111-8111-111111111111",
+    "orderId": "22222222-2222-4222-8222-222222222222",
+    "customerId": "33333333-3333-4333-8333-333333333333",
+    "branchId": "44444444-4444-4444-8444-444444444444",
+    "rating": 5,
+    "comment": "Excelente servicio",
+    "createdAt": "2026-11-06T22:00:00.000Z"
+  },
+  "branchRating": { "average": 4.5, "count": 3 }
+}
+```
+
+Solo clientes autenticados pueden crear reseñas. El pedido debe pertenecer al usuario y estar en estado `DELIVERED`; si el pedido no existe responde `404`, si no pertenece al cliente `403`, si está `PENDING` o ya existe reseña responde `409`, y si `rating` no es 1..5 `400`.
+
+**Promedio de reseñas por sucursal**
+
+```bash
+curl $BASE/branches/44444444-4444-4444-8444-444444444444/rating
+```
+
+```jsonc
+// 200 OK
+{ "average": 4.5, "count": 12 }
+```
+
+Si la sucursal no existe, responde `404`. Si no hay reseñas, la respuesta es `{ "average": null, "count": 0 }`.
 
 ---
 

@@ -13,14 +13,25 @@ import type { IngredientAvailabilityChecker } from '../src/catalog/menu/ports/in
 
 describe.sequential('BE-1.2.1: menú público contra PostgreSQL', () => {
   const branches = [randomUUID(), randomUUID(), randomUUID()];
-  const categories = [randomUUID(), randomUUID(), randomUUID(), randomUUID()];
-  const categoryOrders = [3, 2, 4, 1];
+  const categories = [
+    randomUUID(),
+    randomUUID(),
+    randomUUID(),
+    randomUUID(),
+    randomUUID(),
+    randomUUID(),
+  ];
+  const categoryOrders = [3, 2, 4, 1, 3, 2];
+  // Las dos últimas son las copias de Bebidas y Platos fuertes en la segunda sucursal.
+  const categoryBranches = [0, 0, 0, 0, 1, 1];
   const suffix = randomUUID();
   const categoryNames = [
     `A Bebidas ${suffix}`,
     `B Platos fuertes ${suffix}`,
     `C Ocultos ${suffix}`,
     `D Vacía ${suffix}`,
+    `A Bebidas ${suffix}`,
+    `B Platos fuertes ${suffix}`,
   ];
   let app: INestApplication;
   let module: TestingModule;
@@ -59,8 +70,13 @@ describe.sequential('BE-1.2.1: menú público contra PostgreSQL', () => {
       }
       for (const [index, id] of categories.entries()) {
         await client.query(
-          'INSERT INTO categories (id,name,display_order) VALUES ($1,$2,$3)',
-          [id, categoryNames[index], categoryOrders[index]],
+          'INSERT INTO categories (id,branch_id,name,display_order) VALUES ($1,$2,$3,$4)',
+          [
+            id,
+            branches[categoryBranches[index]],
+            categoryNames[index],
+            categoryOrders[index],
+          ],
         );
       }
       const dishes = [
@@ -101,14 +117,14 @@ describe.sequential('BE-1.2.1: menú público contra PostgreSQL', () => {
         },
         {
           branch: 1,
-          category: 1,
+          category: 5,
           name: 'Ramen',
           price: '13.00',
           status: 'AVAILABLE',
         },
         {
           branch: 1,
-          category: 0,
+          category: 4,
           name: 'Zumo',
           price: '4.75',
           status: 'AVAILABLE',
@@ -164,6 +180,67 @@ describe.sequential('BE-1.2.1: menú público contra PostgreSQL', () => {
       .expect(200);
     return response.body as MenuResponseDto;
   }
+
+  it('BE-01: consulta pública en inglés con precios y aislamiento por sucursal', async () => {
+    const first = await request(app.getHttpServer())
+      .get('/api/v1/dishes')
+      .query({ branchId: branches[0], status: 'active' })
+      .expect(200);
+    const second = await request(app.getHttpServer())
+      .get('/api/v1/dishes')
+      .query({ branchId: branches[1] })
+      .expect(200);
+    expect(
+      first.body.find((dish: { name: string }) => dish.name === 'Ramen'),
+    ).toMatchObject({
+      branchId: branches[0],
+      price: '8.50',
+      isAvailable: true,
+    });
+    expect(
+      second.body.find((dish: { name: string }) => dish.name === 'Ramen'),
+    ).toMatchObject({ branchId: branches[1], price: '13.00' });
+    expect(first.body.map((dish: { name: string }) => dish.name)).not.toEqual(
+      expect.arrayContaining(['Gyozas', 'Oculto']),
+    );
+  });
+
+  it('BE-01: excluye eliminados y no disponibles al releer PostgreSQL', async () => {
+    await client.query(
+      "UPDATE dishes SET is_deleted=(name='Ramen'), is_available=(name<>'Agua') WHERE branch_id=$1",
+      [branches[0]],
+    );
+    try {
+      const response = await request(app.getHttpServer())
+        .get('/api/v1/dishes')
+        .query({ branchId: branches[0] })
+        .expect(200);
+      expect(
+        response.body.map((dish: { name: string }) => dish.name),
+      ).not.toEqual(expect.arrayContaining(['Ramen', 'Agua']));
+    } finally {
+      await client.query(
+        'UPDATE dishes SET is_deleted=false, is_available=true WHERE branch_id=$1',
+        [branches[0]],
+      );
+    }
+  });
+
+  it('BE-01: diferencia menú vacío, sucursal inexistente y entrada inválida', async () => {
+    await request(app.getHttpServer())
+      .get('/api/v1/dishes')
+      .query({ branchId: branches[2] })
+      .expect(200, []);
+    await request(app.getHttpServer())
+      .get('/api/v1/dishes')
+      .query({ branchId: randomUUID() })
+      .expect(404);
+    await request(app.getHttpServer()).get('/api/v1/dishes').expect(400);
+    await request(app.getHttpServer())
+      .get('/api/v1/dishes')
+      .query({ branchId: branches[0], status: 'inactive' })
+      .expect(400);
+  });
 
   it('responde sin token con sucursal y claves JSON en español', async () => {
     const body = await menu();
@@ -361,5 +438,50 @@ describe.sequential('BE-1.2.1: menú público contra PostgreSQL', () => {
     expect(operation?.description).toContain(
       'Si falla la verificación de insumos',
     );
+  });
+
+  it('QA-01: permite consultar el menú con un Bearer inválido porque la ruta es pública', async () => {
+    const response = await request(app.getHttpServer())
+      .get(`/api/v1/sucursales/${branches[0]}/menu`)
+      .set('Authorization', 'Bearer token-invalido')
+      .expect(200);
+
+    expect(response.body).toEqual(
+      expect.objectContaining({
+        sucursal: expect.objectContaining({
+          id: branches[0],
+        }),
+        categorias: expect.any(Array),
+      }),
+    );
+  });
+
+  it('QA-01: responde con disponibilidad falsa si falla el verificador de insumos', async () => {
+    const checker = app.get<IngredientAvailabilityChecker>(
+      INGREDIENT_AVAILABILITY_CHECKER,
+    );
+
+    const spy = vi
+      .spyOn(checker, 'findSufficientDishIds')
+      .mockRejectedValueOnce(new Error('Fallo simulado del verificador'));
+
+    try {
+      const response = await request(app.getHttpServer())
+        .get(`/api/v1/sucursales/${branches[0]}/menu`)
+        .expect(200);
+
+      const body = response.body as MenuResponseDto;
+
+      const dishes = body.categorias.flatMap((category) => category.platillos);
+
+      expect(dishes.length).toBeGreaterThan(0);
+
+      expect(dishes.every((dish) => dish.disponible === false)).toBe(true);
+
+      expect(spy).toHaveBeenCalledTimes(1);
+      expect(spy).toHaveBeenCalledWith(branches[0], expect.any(Array));
+    } finally {
+      spy.mockRestore();
+    }
   });
 });

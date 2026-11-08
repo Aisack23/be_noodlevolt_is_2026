@@ -1,3 +1,4 @@
+import { OrdersModule } from './orders/orders.module.js';
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { APP_GUARD } from '@nestjs/core';
@@ -36,6 +37,7 @@ import { TakeoutOrdersModule } from '@TakeoutOrders';
     CatalogModule,
     InventoryModule,
     AccountsOrdersModule,
+    OrdersModule,
     ReservationsModule,
     PurchasesModule,
     RecipesModule,

@@ -4,6 +4,7 @@ import { PrismaService } from '@Prisma/services';
 import { type Category } from '@PrismaClient';
 
 export interface CreateCategoryData {
+  branchId: string;
   name: string;
   description?: string;
 }
@@ -29,9 +30,9 @@ export class CategoryRepository {
     });
   }
 
-  findByName(name: string): Promise<Category | null> {
+  findByName(branchId: string, name: string): Promise<Category | null> {
     return this.prisma.category.findUnique({
-      where: { name },
+      where: { branchId_name: { branchId, name } },
     });
   }
 
