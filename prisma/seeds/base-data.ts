@@ -32,11 +32,13 @@ const USERS = [
   {
     role: UserRole.BRANCH_ADMIN,
     email: 'branch_admin@example.com',
+    name: 'Gerente Santa Tecla',
     branch: 'NoodleVolt Santa Tecla',
   },
   {
     role: UserRole.BRANCH_ADMIN,
     email: 'branch_admin_centro@example.com',
+    name: 'Gerente Centro',
     branch: 'NoodleVolt Centro',
   },
   {
@@ -76,7 +78,7 @@ export async function seedBaseData(prisma: PrismaClient) {
         update: {},
         create: {
           email: user.email,
-          name: user.role,
+          name: user.name ?? user.role,
           lastName: 'Demo',
           passwordHash,
           role: user.role,
