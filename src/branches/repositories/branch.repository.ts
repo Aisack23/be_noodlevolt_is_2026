@@ -1,7 +1,6 @@
-
-import { Injectable } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import { PrismaService } from '@Prisma/services';
-import { Prisma, type Branch } from '@PrismaClient';
+import { type Branch } from '@PrismaClient';
 
 export interface CreateBranchData {
   name: string;
@@ -15,9 +14,32 @@ export interface UpdateBranchData {
   timeZone?: string;
 }
 
+const publicBranchSelect = {
+  id: true,
+  name: true,
+  address: true,
+  timeZone: true,
+  isActive: true,
+  config: { select: { isOpen: true } },
+} as const;
+
 @Injectable()
 export class BranchRepository {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(@Inject(PrismaService) private readonly prisma: PrismaService) {}
+
+  findPublicBranches() {
+    return this.prisma.branch.findMany({
+      select: publicBranchSelect,
+      orderBy: [{ name: 'asc' }, { id: 'asc' }],
+    });
+  }
+
+  findPublicBranch(id: string) {
+    return this.prisma.branch.findUnique({
+      where: { id },
+      select: publicBranchSelect,
+    });
+  }
 
   create(data: CreateBranchData): Promise<Branch> {
     return this.prisma.branch.create({
