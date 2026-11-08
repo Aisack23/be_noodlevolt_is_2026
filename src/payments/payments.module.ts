@@ -1,3 +1,4 @@
+import { CustomerFeaturesModule } from '@CustomerFeatures';
 import { SimulatedPaymentsController } from './simulation/controllers/simulated-payments.controller.js';
 import { SimulatedPaymentsService } from './simulation/services/simulated-payments.service.js';
 import { SimulatedPaymentsRepository } from './simulation/repositories/simulated-payments.repository.js';
@@ -12,6 +13,7 @@ import {
 } from '@Payments/repositories';
 
 @Module({
+  imports: [CustomerFeaturesModule],
   controllers: [SimulatedPaymentsController],
   providers: [
     SimulatedPaymentsService,
