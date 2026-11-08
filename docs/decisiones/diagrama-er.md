@@ -1,6 +1,6 @@
 # Diagrama ER
 
-Modelo vigente del catálogo por sucursal (DB-01), del inventario de insumos (DB-05) y de las reseñas por pedido (DB-06). Las demás tasks de datos agregan aquí sus entidades. Las reglas y justificaciones están en [modelo-datos.md](modelo-datos.md).
+Modelo vigente del catálogo por sucursal (DB-01), del inventario de insumos (DB-05), de las reseñas por pedido (DB-06) y de los parámetros de sucursal (DB-11). Las demás tasks de datos agregan aquí sus entidades. Las reglas y justificaciones están en [modelo-datos.md](modelo-datos.md).
 
 ```mermaid
 erDiagram
@@ -12,6 +12,8 @@ erDiagram
     categories ||--o{ dishes : "agrupa (misma sucursal)"
     branches ||--o{ branch_ingredients : "tiene existencias"
     ingredients ||--o{ branch_ingredients : "se registra en"
+    branches ||--o| branch_configs : "tiene"
+    users |o--o{ branch_configs : "cambió por última vez"
     users ||--o{ orders : "realiza"
     users ||--o{ reviews : "escribe"
     orders ||--|| reviews : "tiene, como máximo una"
@@ -23,6 +25,14 @@ erDiagram
         varchar time_zone
         boolean is_active
         timestamptz created_at
+    }
+    branch_configs {
+        uuid id PK
+        uuid branch_id FK,UK "DELETE CASCADE"
+        boolean is_open "DEFAULT true"
+        uuid updated_by FK "opcional, DELETE SET NULL"
+        timestamptz created_at
+        timestamptz updated_at
     }
     users {
         uuid id PK
