@@ -5,7 +5,7 @@ import type { INestApplication } from '@nestjs/common';
 import { Client } from 'pg';
 import request from 'supertest';
 
-const ids = [randomUUID(), randomUUID(), randomUUID()];
+const ids: string[] = [randomUUID(), randomUUID(), randomUUID()];
 
 describe.sequential(
   'Consultas de sucursales contra AppModule y PostgreSQL',

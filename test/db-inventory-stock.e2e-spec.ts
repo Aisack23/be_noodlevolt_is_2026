@@ -380,7 +380,7 @@ describe.sequential('BE-05: consulta de inventario contra PostgreSQL', () => {
       const result = await items('generalManager');
       // La base es compartida con otras suites: solo se exigen las filas propias.
       const own = result.filter(({ branchId }) =>
-        [branchA.id, branchB.id].includes(branchId),
+        [branchA.id, branchB.id].some((id) => id === branchId),
       );
       expect(summary(own)).toEqual([
         ...expected(branchA, stockA),

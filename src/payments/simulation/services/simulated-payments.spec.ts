@@ -92,7 +92,7 @@ describe('BE-06: simulación con JWT real y persistencia simulada', () => {
   afterAll(async () => {
     await app.close();
   });
-  function post(body: unknown = input, auth = token) {
+  function post(body: object | string = input, auth = token) {
     return request(app.getHttpServer())
       .post('/api/v1/payments/simulate')
       .set('Authorization', `Bearer ${auth}`)

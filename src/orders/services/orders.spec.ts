@@ -87,7 +87,7 @@ describe('BE-02: pedidos', () => {
     await app.close();
   });
 
-  function post(body: unknown = input) {
+  function post(body: object | string = input) {
     return request(app.getHttpServer())
       .post('/api/v1/orders')
       .set('Authorization', `Bearer ${token}`)
