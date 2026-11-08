@@ -84,7 +84,7 @@ describe('DB-09: notificaciones internas', () => {
     );
     for (const recipient of [user, other]) {
       await db.client.query(
-        "INSERT INTO notifications(id,user_id,event_key,type,title,message) VALUES($1,$2,'MISMO_EVENTO','GENERIC','Aviso',$2::text)",
+        "INSERT INTO notifications(id,user_id,event_key,type,title,message) VALUES($1,$2::uuid,'MISMO_EVENTO','GENERIC','Aviso',$2::text)",
         [randomUUID(), recipient],
       );
     }
