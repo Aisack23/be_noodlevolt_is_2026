@@ -375,6 +375,7 @@ model Order {
   items          OrderItem[]
   payments       Payment[]
   inventoryMoves InventoryMovement[]
+  notifications  Notification[]
   statusHistory  OrderStatusHistory[]
   review         Review?
 
@@ -712,12 +713,17 @@ model Notification {
   message       String
   referenceType String?  @map("reference_type") @db.VarChar(40)
   referenceId   String?  @map("reference_id") @db.Uuid
+  orderId       String?  @map("order_id") @db.Uuid
   eventKey      String?  @map("event_key") @db.VarChar(100)
   isRead        Boolean  @default(false) @map("is_read")
   createdAt     DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  order Order? @relation(fields: [orderId], references: [id], onDelete: Restrict)
 
+  @@unique([userId, eventKey])
+  @@index([userId, createdAt])
+  @@index([orderId])
   @@index([userId, isRead, createdAt])
   @@index([referenceType, referenceId])
   @@map("notifications")
