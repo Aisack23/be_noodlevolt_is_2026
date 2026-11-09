@@ -2,7 +2,7 @@
 
 ## Alcance y equivalencias
 
-DB-A.1.1 (numeración anterior) define usuarios, roles, sucursales y mesas. En V_FINAL, usuarios y sucursales quedan en DB-01; las mesas no forman parte de V_FINAL. Se mantienen modelos y enums en inglés; el contrato funcional de V_FINAL usa las siguientes equivalencias.
+DB-A.1.1 (numeración anterior; en V_FINAL, sección 2.2) define usuarios, roles, sucursales y mesas. En V_FINAL, los roles están en la sección 2.2 y su seed en BE-01; las mesas no forman parte de V_FINAL. Se mantienen modelos y enums en inglés; el contrato funcional de V_FINAL usa las siguientes equivalencias.
 
 | UserRole          | V_FINAL                                                                                        |
 | ----------------- | ---------------------------------------------------------------------------------------------- |
