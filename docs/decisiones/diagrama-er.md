@@ -1,6 +1,6 @@
 # Diagrama ER
 
-Modelo vigente del catálogo por sucursal (DB-01), del inventario de insumos (DB-05), de las reseñas por pedido (DB-06) y de los parámetros de sucursal (DB-11). Las demás tasks de datos agregan aquí sus entidades. Las reglas y justificaciones están en [modelo-datos.md](modelo-datos.md).
+Modelo vigente del catálogo por sucursal (DB-01), del inventario de insumos (DB-05), de las reseñas por pedido (DB-06), del programa de lealtad (DB-07) y de los parámetros de sucursal (DB-11). Las demás tasks de datos agregan aquí sus entidades. Las reglas y justificaciones están en [modelo-datos.md](modelo-datos.md).
 
 ```mermaid
 erDiagram
@@ -18,6 +18,61 @@ erDiagram
     users ||--o{ reviews : "escribe"
     orders ||--|| reviews : "tiene, como máximo una"
 
+    users ||--o| loyalty_accounts : "tiene saldo"
+    users ||--o{ points_movements : "registra"
+    orders |o--o{ payments : "recibe intentos"
+    payments |o--o{ points_movements : "referencia (un EARN por pago)"
+    points_rules |o--o{ points_movements : "aplica regla"
+    users ||--o{ redemptions : "canjea"
+    benefits ||--o{ redemptions : "ofrece"
+    redemptions |o--o| points_movements : "registra canje"
+
+    loyalty_accounts {
+        uuid user_id PK,FK "DELETE RESTRICT"
+        integer points "DEFAULT 0, CHECK >= 0"
+        timestamptz created_at
+        timestamptz updated_at
+    }
+    points_movements {
+        uuid id PK
+        uuid customer_id FK "DELETE RESTRICT"
+        uuid points_rule_id FK "opcional, DELETE SET NULL"
+        enum type "EARN, REDEEM, ADJUSTMENT"
+        integer points "EARN > 0; otros con signo"
+        uuid payment_id FK "opcional, UNIQUE parcial para EARN, DELETE RESTRICT"
+        uuid redemption_id FK,UK "opcional, DELETE RESTRICT"
+        timestamptz created_at
+    }
+    payments {
+        uuid id PK
+        uuid order_id FK "opcional, DELETE RESTRICT"
+        enum status "PAID = APROBADO, REJECTED = RECHAZADO"
+        numeric total_paid "NUMERIC(14,2)"
+    }
+    points_rules {
+        uuid id PK
+        numeric points_per_dollar
+        boolean is_active
+        timestamptz starts_at
+        timestamptz ends_at "opcional"
+    }
+    benefits {
+        uuid id PK
+        varchar name
+        integer points_cost
+        numeric discount
+        boolean is_active
+    }
+    redemptions {
+        uuid id PK
+        uuid customer_id FK "DELETE RESTRICT"
+        uuid benefit_id FK "DELETE RESTRICT"
+        varchar code UK
+        integer points_cost
+        enum status
+        timestamptz created_at
+        timestamptz used_at "opcional"
+    }
     branches {
         uuid id PK
         varchar name UK

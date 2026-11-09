@@ -233,6 +233,7 @@ model User {
   reservations       Reservation[]
   inventoryMovements InventoryMovement[]
   redemptions        Redemption[]
+  loyaltyAccount     LoyaltyAccount?
   pointsMovements    PointsMovement[]
   reviews            Review[]
   notifications      Notification[]
@@ -621,6 +622,17 @@ model FiscalDocument {
   fiscalClient FiscalClient? @relation(fields: [fiscalClientId], references: [id], onDelete: SetNull)
 
   @@map("fiscal_documents")
+}
+
+model LoyaltyAccount {
+  userId    String   @id @map("user_id") @db.Uuid
+  points    Int      @default(0)
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Restrict)
+
+  @@map("loyalty_accounts")
 }
 
 model PointsRule {

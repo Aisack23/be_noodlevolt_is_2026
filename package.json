@@ -15,6 +15,7 @@
     "prisma:deploy": "prisma migrate deploy",
     "prisma:studio": "prisma studio",
     "db:seed": "prisma db seed",
+    "db:seed:loyalty": "tsx prisma/seeds/run-loyalty.ts",
     "db:seed:base": "tsx prisma/seeds/run-base.ts",
     "db:seed:review": "tsx prisma/seeds/run-review.ts",
     "db:seed:catalog": "tsx prisma/seeds/run-catalog.ts",
