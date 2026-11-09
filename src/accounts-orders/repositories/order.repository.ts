@@ -3,6 +3,19 @@ import { Injectable } from '@nestjs/common';
 import { Order, OrderStatus, OrderType } from '@PrismaClient';
 import { PrismaService } from '@Prisma/services';
 
+export interface CustomerOrderListRow {
+  id: string;
+  orderNumber: string | null;
+  status: OrderStatus;
+  total: unknown;
+  createdAt: Date;
+  branchId: string;
+  branch: {
+    name: string;
+  };
+  review: { id: string; rating: number } | null;
+}
+
 export interface CreateOrderData {
   branchId: string;
   accountId?: string | null;
@@ -74,6 +87,40 @@ export class OrderRepository {
       where: { customerId },
       orderBy: { createdAt: 'desc' },
     });
+  }
+
+  findMine(
+    customerId: string,
+    status?: OrderStatus,
+    limit = 50,
+  ): Promise<CustomerOrderListRow[]> {
+    return this.prisma.order.findMany({
+      where: {
+        customerId,
+        ...(status ? { status } : {}),
+      },
+      orderBy: { createdAt: 'desc' },
+      take: limit,
+      select: {
+        id: true,
+        orderNumber: true,
+        status: true,
+        total: true,
+        createdAt: true,
+        branchId: true,
+        branch: {
+          select: {
+            name: true,
+          },
+        },
+        review: {
+          select: {
+            id: true,
+            rating: true,
+          },
+        },
+      },
+    }) as Promise<CustomerOrderListRow[]>;
   }
 
   findByWaiter(waiterId: string): Promise<Order[]> {

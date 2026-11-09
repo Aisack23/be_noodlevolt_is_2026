@@ -166,4 +166,33 @@ erDiagram
 
 Índices de reseñas: `reviews(branch_id, created_at)`, `reviews(customer_id, created_at)` y `reviews_order_id_key` como unicidad por pedido. El promedio de рейтин por sucursal o por pedido se calcula con `AVG(rating)` en agregación a demanda; no se persiste un campo `average_rating` ni `review_count` para evitar duplicar datos derivados.
 
-DB-07: `LoyaltyAccount` corresponde a `LoyaltyAccount` del PDF y `PointsMovement` conserva el nombre existente para representar `LoyaltyMovement`. El índice `points_movements_one_earn_per_payment` es único sobre `payment_id` solo para EARN; el historial mantiene `points_movements(customer_id, created_at)`. BE-07 valida PAID y actualiza saldo y movimientos en una transacción. Rechazos, coherencia y reversión protegida: [lealtad-db07.md](lealtad-db07.md).
+## DB-09: notificaciones internas
+
+`Notification.userId` (`user_id`) equivale a `recipientId` del PDF. Se conserva por compatibilidad con NotificationRepository. BE-09 obtiene el destinatario de Order.customerId y verifica que sea el dueño del pedido. La sucursal se obtiene de Order.branchId.
+
+```mermaid
+erDiagram
+    users ||--o{ notifications : "destinatario DELETE CASCADE"
+    orders o|--o{ notifications : "pedido DELETE RESTRICT"
+    notifications {
+        uuid id PK
+        uuid user_id FK
+        uuid order_id FK "nullable excepto PEDIDO_LISTO"
+        varchar event_key "UNIQUE con user_id"
+        varchar type
+        varchar title
+        text message
+        varchar reference_type "nullable"
+        uuid reference_id "nullable"
+        boolean is_read "default false"
+        timestamptz created_at
+    }
+```
+
+Clave de aviso: `PEDIDO_LISTO:<orderId>:<userId>`. UNIQUE(user_id,event_key) evita duplicados incluso si el aviso ya fue leído. Para PEDIDO_LISTO, el CHECK exige pedido y clave no nulos y la coincidencia exacta de esa identidad. Otros tipos conservan las referencias genéricas existentes. La migración rechaza duplicados y avisos PEDIDO_LISTO sin pedido sin cambios parciales ni borrado automático.
+
+Índices agregados: (user_id,created_at), (order_id). Se conserva (user_id,is_read,created_at). El estado vacío corresponde a cero filas, sin registros artificiales.
+
+Seed: `npm run db:seed:notifications`. Requiere ejecutar antes los seeds base y catálogo. Reutiliza demo@example.com y BASE_BRANCHES; agrega en cada sucursal el pedido DB09-READY, con estado READY, una línea de dos ramen y total decimal calculado de su precio. No crea clientes ni sucursales. Los reintentos conservan los mismos pedidos, líneas y avisos.
+
+`down.sql` rechaza la reversión si hay notificaciones con order_id no nulo para evitar perder su asociación. Deben respaldarse y retirarse explícitamente antes de revertir. Si no hay asociaciones, retira las restricciones y la columna order_id.

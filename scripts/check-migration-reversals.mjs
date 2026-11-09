@@ -199,42 +199,8 @@ async function checkCategoryWithoutBranch(up) {
 }
 
 async function checkRefusal(directory, down) {
-  if (directory === '20261108120000_loyalty_accounts') {
-    const userId = randomUUID();
-    await client.query(
-      "INSERT INTO users (id,email,name,password_hash,updated_at) VALUES ($1,$2,'Lealtad','test',now())",
-      [userId, userId + '@example.com'],
-    );
-    await client.query('INSERT INTO loyalty_accounts (user_id) VALUES ($1)', [
-      userId,
-    ]);
-    const before = await schema();
-    const account = (
-      await client.query('SELECT * FROM loyalty_accounts WHERE user_id=$1', [
-        userId,
-      ])
-    ).rows;
-    assert.equal(account.length, 1);
-    await assert.rejects(client.query(down), { code: 'P0001' });
-    await client.query('ROLLBACK');
-    assert.deepEqual(
-      await schema(),
-      before,
-      'El down rechazado de DB-07 debe conservar el schema',
-    );
-    assert.deepEqual(
-      (
-        await client.query('SELECT * FROM loyalty_accounts WHERE user_id=$1', [
-          userId,
-        ])
-      ).rows,
-      account,
-      'El down rechazado de DB-07 debe conservar la cuenta y sus fechas',
-    );
-    await client.query('DELETE FROM loyalty_accounts WHERE user_id=$1', [
-      userId,
-    ]);
-    await client.query('DELETE FROM users WHERE id=$1', [userId]);
+  if (directory.endsWith('internal_notifications')) {
+    await checkNotificationRefusal(down);
     return;
   }
   const enums = directory.endsWith('base_anexo_a');
@@ -290,6 +256,103 @@ async function checkRefusal(directory, down) {
   if (branchColumn)
     await client.query('DELETE FROM categories WHERE id=$1', [category]);
   await client.query('DELETE FROM branches WHERE id=$1', [branch]);
+}
+
+async function notificationFixtures() {
+  const branch = randomUUID();
+  const user = randomUUID();
+  const order = randomUUID();
+  await client.query(
+    "INSERT INTO branches(id,name,address) VALUES($1::uuid,$1::text,'Prueba')",
+    [branch],
+  );
+  await client.query(
+    "INSERT INTO users(id,name,email,password_hash,updated_at) VALUES($1,'Cliente',$2,'test',now())",
+    [user, `${user}@example.com`],
+  );
+  await client.query(
+    "INSERT INTO orders(id,branch_id,customer_id,type,status,operation_id,updated_at) VALUES($1,$2,$3,'DINE_IN','READY',$4,now())",
+    [order, branch, user, randomUUID()],
+  );
+  return { branch, user, order };
+}
+
+async function removeNotificationFixtures({ branch, user, order }) {
+  await client.query('DELETE FROM notifications WHERE user_id=$1', [user]);
+  await client.query('DELETE FROM orders WHERE id=$1', [order]);
+  await client.query('DELETE FROM users WHERE id=$1', [user]);
+  await client.query('DELETE FROM branches WHERE id=$1', [branch]);
+}
+
+async function checkNotificationRefusal(down) {
+  const fixture = await notificationFixtures();
+  const id = randomUUID();
+  await client.query(
+    "INSERT INTO notifications(id,user_id,order_id,type,event_key,title,message) VALUES($1,$2,$3,'PEDIDO_LISTO',$4,'Listo','Pedido listo')",
+    [
+      id,
+      fixture.user,
+      fixture.order,
+      `PEDIDO_LISTO:${fixture.order}:${fixture.user}`,
+    ],
+  );
+  const before = await schema();
+  const rows = (
+    await client.query('SELECT * FROM notifications WHERE id=$1', [id])
+  ).rows;
+  await assert.rejects(client.query(down), { code: 'P0001' });
+  await client.query('ROLLBACK');
+  assert.deepEqual(
+    await schema(),
+    before,
+    'El down rechazado debe conservar todo el esquema',
+  );
+  assert.deepEqual(
+    (await client.query('SELECT * FROM notifications WHERE id=$1', [id])).rows,
+    rows,
+    'El down rechazado debe conservar el aviso y su pedido',
+  );
+  await removeNotificationFixtures(fixture);
+}
+
+async function checkNotificationMigrationRefusal(up) {
+  for (const duplicate of [true, false]) {
+    const fixture = await notificationFixtures();
+    const ids = duplicate ? [randomUUID(), randomUUID()] : [randomUUID()];
+    for (const id of ids) {
+      await client.query(
+        "INSERT INTO notifications(id,user_id,event_key,type,title,message) VALUES($1,$2,'LEGACY_EVENT',$3,'Aviso','Datos anteriores')",
+        [id, fixture.user, duplicate ? 'GENERIC' : 'PEDIDO_LISTO'],
+      );
+    }
+    const before = await schema();
+    const rows = (
+      await client.query(
+        'SELECT * FROM notifications WHERE user_id=$1 ORDER BY id',
+        [fixture.user],
+      )
+    ).rows;
+    await assert.rejects(client.query(up), {
+      code: duplicate ? '23505' : '23514',
+    });
+    await client.query('ROLLBACK');
+    assert.deepEqual(
+      await schema(),
+      before,
+      'La migración rechazada no debe dejar columnas, índices ni restricciones parciales',
+    );
+    assert.deepEqual(
+      (
+        await client.query(
+          'SELECT * FROM notifications WHERE user_id=$1 ORDER BY id',
+          [fixture.user],
+        )
+      ).rows,
+      rows,
+      'La migración rechazada debe conservar todos los avisos anteriores',
+    );
+    await removeNotificationFixtures(fixture);
+  }
 }
 
 async function checkBranchConfigCopy(owned) {
@@ -348,6 +411,9 @@ try {
       if (error.code !== 'ENOENT') throw error;
     }
     const before = down ? await schema() : null;
+    if (directory.endsWith('internal_notifications')) {
+      await checkNotificationMigrationRefusal(up);
+    }
     if (directory.endsWith(CATEGORY_COPY_MIGRATION)) {
       await checkCategoryWithoutBranch(up);
       const fixtures = await categoryCopyFixtures();

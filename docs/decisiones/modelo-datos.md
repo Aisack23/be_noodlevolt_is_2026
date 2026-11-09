@@ -56,6 +56,7 @@ La pertenencia de platillos a sucursal permite validar el catálogo y evitar ped
 | OrderStatus     | CONFIRMED                                     | Sin equivalente; pregunta abierta              |
 | OrderItemStatus | PENDING / IN_PREPARATION / READY / DELIVERED  | PENDIENTE / EN_PREPARACION / LISTO / ENTREGADO |
 | AccountStatus   | OPEN / CLOSED                                 | ABIERTA / CERRADA                              |
+| Notification.type | PEDIDO_LISTO | PEDIDO_LISTO: aviso interno de pedido listo (HU-09) |
 | OrderType       | DINE_IN / TAKEOUT                             | SALA / LLEVAR                                  |
 
 | PaymentMode | HU       |
