@@ -38,7 +38,7 @@ export class PointsMovementRepository {
 
   findByPayment(paymentId: string): Promise<PointsMovement | null> {
     return this.prisma.pointsMovement.findFirst({
-      where: { paymentId },
+      where: { paymentId, type: 'EARN' },
     });
   }
 

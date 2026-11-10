@@ -1,4 +1,5 @@
 import { randomUUID } from 'node:crypto';
+import { LoyaltyRepository } from '@CustomerFeatures/repositories';
 import {
   ConflictException,
   ForbiddenException,
@@ -15,7 +16,10 @@ const payableSelect = { customerId: true, status: true } as const;
 
 @Injectable()
 export class SimulatedPaymentsRepository {
-  constructor(@Inject(PrismaService) private readonly prisma: PrismaService) {}
+  constructor(
+    @Inject(PrismaService) private readonly prisma: PrismaService,
+    @Inject(LoyaltyRepository) private readonly loyalty: LoyaltyRepository,
+  ) {}
 
   async requirePayable(orderId: string, customerId: string): Promise<void> {
     const order = await this.prisma.order.findUnique({
@@ -81,6 +85,7 @@ export class SimulatedPaymentsRepository {
           },
           include: { simpleReceipt: true },
         });
+        await this.loyalty.accruePayment(payment.id, tx);
         return {
           id: payment.id,
           orderId,

@@ -86,6 +86,13 @@ describe.sequential('BE-06: endpoint y persistencia Prisma reales', () => {
       try {
         if (fixtures) {
           await client.query(
+            'DELETE FROM points_movements WHERE customer_id=$1',
+            [customerId],
+          );
+          await client.query('DELETE FROM loyalty_accounts WHERE user_id=$1', [
+            customerId,
+          ]);
+          await client.query(
             'DELETE FROM simple_receipts WHERE payment_id IN (SELECT id FROM payments WHERE branch_id=$1)',
             [branchId],
           );
