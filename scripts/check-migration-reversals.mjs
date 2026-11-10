@@ -198,7 +198,37 @@ async function checkCategoryWithoutBranch(up) {
   await client.query('DELETE FROM categories WHERE id=$1', [id]);
 }
 
+async function checkOrderUpdatedByRefusal(down) {
+  const fixture = await notificationFixtures();
+  await client.query('UPDATE orders SET updated_by=$1 WHERE id=$2', [
+    fixture.user,
+    fixture.order,
+  ]);
+  const before = await schema();
+  const rows = (
+    await client.query('SELECT * FROM orders WHERE id=$1', [fixture.order])
+  ).rows;
+  await assert.rejects(client.query(down), { code: 'P0001' });
+  await client.query('ROLLBACK');
+  assert.deepEqual(
+    await schema(),
+    before,
+    'El rechazo debe conservar el esquema DB-03',
+  );
+  assert.deepEqual(
+    (await client.query('SELECT * FROM orders WHERE id=$1', [fixture.order]))
+      .rows,
+    rows,
+    'El rechazo debe conservar el autor de la transición',
+  );
+  await removeNotificationFixtures(fixture);
+}
+
 async function checkRefusal(directory, down) {
+  if (directory.endsWith('order_updated_by')) {
+    await checkOrderUpdatedByRefusal(down);
+    return;
+  }
   if (directory.endsWith('internal_notifications')) {
     await checkNotificationRefusal(down);
     return;
