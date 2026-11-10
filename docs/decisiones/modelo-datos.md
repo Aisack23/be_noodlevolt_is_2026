@@ -2,24 +2,35 @@
 
 ## Alcance y equivalencias
 
-DB-A.1.1 define usuarios, roles, sucursales y mesas. Se mantienen modelos y enums en inglés; el contrato funcional de la HU usa las siguientes equivalencias.
+DB-A.1.1 (numeración anterior; en V_FINAL, sección 2.2) define usuarios, roles, sucursales y mesas. En V_FINAL, los roles están en la sección 2.2 y su seed en BE-01; las mesas no forman parte de V_FINAL. Se mantienen modelos y enums en inglés; el contrato funcional de V_FINAL usa las siguientes equivalencias.
 
-| UserRole          | HU                   |
-| ----------------- | -------------------- |
-| CLIENT            | CLIENTE              |
-| WAITER            | MESERO               |
-| COOK              | COCINA               |
-| CASHIER           | CAJERO               |
-| INVENTORY_MANAGER | ENCARGADO_INVENTARIO |
-| BRANCH_ADMIN      | GERENTE              |
-| GENERAL_MANAGER   | GERENTE_GENERAL      |
+| UserRole          | V_FINAL                                                                                        |
+| ----------------- | ---------------------------------------------------------------------------------------------- |
+| CLIENT            | CLIENTE                                                                                        |
+| WAITER            | MESERO                                                                                         |
+| COOK              | COCINA                                                                                         |
+| BRANCH_ADMIN      | GERENTE                                                                                        |
+| GENERAL_MANAGER   | GERENTE_GENERAL                                                                                |
+| CASHIER           | Valor heredado: sin rol en V_FINAL y sin acceso a ningún endpoint (antes CAJERO)               |
+| INVENTORY_MANAGER | Valor heredado: sin rol en V_FINAL y sin acceso a ningún endpoint (antes ENCARGADO_INVENTARIO) |
 
-| TableStatus              | HU                                               |
-| ------------------------ | ------------------------------------------------ |
-| AVAILABLE                | LIBRE                                            |
-| OCCUPIED                 | OCUPADA                                          |
-| NEEDS_CLEANING           | POR_LIMPIAR                                      |
-| RESERVED, OUT_OF_SERVICE | Estados adicionales sin equivalencia en DB-A.1.1 |
+CASHIER e INVENTORY_MANAGER siguen en el enum del schema y no se borran. Sin embargo, el seed base todavía crea un usuario para cada uno; ver [Datos iniciales](#datos-iniciales).
+
+| TableStatus              | HU anterior                                                                  |
+| ------------------------ | ---------------------------------------------------------------------------- |
+| AVAILABLE                | LIBRE                                                                        |
+| OCCUPIED                 | OCUPADA                                                                      |
+| NEEDS_CLEANING           | POR_LIMPIAR                                                                  |
+| RESERVED, OUT_OF_SERVICE | Sin equivalencia en V_FINAL, que no define estados de mesa; pregunta abierta |
+
+## Idioma de los valores
+
+Los nombres de modelos, campos, enums y los valores que la API expone para estados están en inglés (`IN_PREPARATION`, `DINE_IN`). La interfaz traduce cada valor al español con las tablas de este documento. Hoy conviven estas mezclas, que no se corrigen aquí:
+
+- BE-06 (`POST /api/v1/payments/simulate`) guarda `PAID` o `REJECTED` en la tabla `payments`, pero responde `APROBADO` o `RECHAZADO` (`src/payments/simulation/dto/payment-result.dto.ts`).
+- Las descripciones de Swagger de sucursal e inventario usan los roles de V_FINAL (`GERENTE`, `GERENTE_GENERAL`), mientras el enum es `BRANCH_ADMIN` y `GENERAL_MANAGER`.
+- La respuesta de pedidos devuelve estados en inglés (`PENDING`, `IN_PREPARATION`, ...); su descripción indica que `PENDING` equivale a PENDIENTE (`src/orders/dto/order-response.dto.ts`).
+- `Notification.type` es texto libre (`VarChar(40)`), no enum, y su valor en uso es `PEDIDO_LISTO`.
 
 ## Integridad
 
@@ -27,53 +38,62 @@ DB-A.1.1 define usuarios, roles, sucursales y mesas. Se mantienen modelos y enum
 - `tables_capacity_check`: capacidad estrictamente mayor que cero.
 - `branches_name_key`: nombre único de sucursal. La comparación conserva las reglas de texto de PostgreSQL; no se añade normalización de mayúsculas.
 - `users_email_key`, FK de usuarios y UNIQUE de número de mesa por sucursal se mantienen.
-- INVENTORY_MANAGER identifica al responsable de inventario; NEEDS_CLEANING distingue una mesa cobrada de una mesa disponible, conforme a BE-6.1.2 y BE-A.3.1.
+- INVENTORY_MANAGER es un rol heredado, sin uso en V_FINAL. NEEDS_CLEANING distingue una mesa cobrada de una mesa disponible, conforme a BE-6.1.2 y BE-A.3.1 (numeración anterior).
 
 La migración rechaza datos anteriores inválidos; no reasigna personas ni renombra sucursales automáticamente. Los CHECK se agregan manualmente al SQL generado por Prisma.
 
-## Catálogo y pedidos: DB-1.1.1 y DB-2.1.1
+## Catálogo y pedidos: DB-01 y DB-02 (antes DB-1.1.1 y DB-2.1.1)
 
-| Modelo / campo        | Restricción y justificación                                                         |
-| --------------------- | ----------------------------------------------------------------------------------- |
-| Category.displayOrder | INTEGER NOT NULL DEFAULT 0, columna display_order: orden de presentación del menú   |
-| Dish.name             | VARCHAR(100), según DB-1.1.1                                                        |
-| Dish.description      | VARCHAR(300), opcional                                                              |
-| Dish.price            | NUMERIC(10,2) según DB-01 y CHECK `dishes_price_check`: mayor que cero              |
-| Dish.branchId         | UUID obligatorio, FK `dishes_branch_id_fkey` a branches con DELETE RESTRICT         |
-| Dish.branchId + name  | UNIQUE `dishes_branch_id_name_key`: permite el mismo nombre en sucursales distintas |
-| OrderItem.unitPrice   | NUMERIC(10,2), igual que Dish.price; snapshot del precio al pedir                   |
-| OrderItem.quantity    | CHECK `order_items_quantity_check`: entero de 1 a 20, inclusivo                     |
-| OrderItem.note        | VARCHAR(200) opcional; el tipo limita la longitud, sin CHECK adicional              |
-| Order.status          | Se agrega PENDING_PAYMENT; el default sigue siendo PENDING                          |
+| Modelo / campo        | Restricción y justificación                                                                       |
+| --------------------- | ------------------------------------------------------------------------------------------------- |
+| Category.displayOrder | INTEGER NOT NULL DEFAULT 0, columna display_order: orden de presentación del menú                 |
+| Dish.name             | VARCHAR(100), según DB-01 (antes DB-1.1.1)                                                        |
+| Dish.description      | VARCHAR(300), opcional                                                                            |
+| Dish.price            | NUMERIC(10,2) según DB-01 y CHECK `dishes_price_check`: mayor que cero                            |
+| Dish.branchId         | UUID obligatorio, FK `dishes_branch_id_fkey` a branches con DELETE RESTRICT                       |
+| Dish.branchId + name  | UNIQUE `dishes_branch_id_name_key`: permite el mismo nombre en sucursales distintas               |
+| OrderItem.unitPrice   | NUMERIC(10,2), igual que Dish.price; snapshot del precio al pedir                                 |
+| OrderItem.quantity    | CHECK `order_items_quantity_check`: entero de 1 a 20, inclusivo                                   |
+| OrderItem.note        | VARCHAR(200) opcional; el tipo limita la longitud, sin CHECK adicional                            |
+| Order.status          | Se agrega PENDING_PAYMENT (valor heredado, no existe en V_FINAL); el default sigue siendo PENDING |
 
-La pertenencia de platillos a sucursal permite validar el catálogo y evitar pedidos con platillos de otra sucursal. La FK conserva la sucursal mientras exista un platillo que la use. Como ajuste mínimo exigido por el schema, `CreateDishData` agrega únicamente `branchId: string`, correspondiente a `Branch.id String @db.Uuid`; permite compilar la creación existente con el nuevo campo obligatorio. No cambia consultas ni lógica del repositorio. El filtrado por sucursal y las reglas de BE-1.1.1 siguen perteneciendo a esa task.
+La pertenencia de platillos a sucursal permite validar el catálogo y evitar pedidos con platillos de otra sucursal. La FK conserva la sucursal mientras exista un platillo que la use. Como ajuste mínimo exigido por el schema, `CreateDishData` agrega únicamente `branchId: string`, correspondiente a `Branch.id String @db.Uuid`; permite compilar la creación existente con el nuevo campo obligatorio. No cambia consultas ni lógica del repositorio. El filtrado por sucursal y las reglas de BE-01 (antes BE-1.1.1) siguen perteneciendo a esa task.
 
-| Enum            | Inglés                                        | HU                                             |
-| --------------- | --------------------------------------------- | ---------------------------------------------- |
-| DishStatus      | AVAILABLE / SOLD_OUT / DISABLED               | DISPONIBLE / AGOTADO / DESHABILITADO           |
-| OrderStatus     | PENDING_PAYMENT / PENDING                     | PENDIENTE_PAGO / PENDIENTE                     |
-| OrderStatus     | IN_PREPARATION / READY / DELIVERED / CANCELED | EN_PREPARACION / LISTO / ENTREGADO / CANCELADO |
-| OrderStatus     | CONFIRMED                                     | Sin equivalente; pregunta abierta              |
-| OrderItemStatus | PENDING / IN_PREPARATION / READY / DELIVERED  | PENDIENTE / EN_PREPARACION / LISTO / ENTREGADO |
-| AccountStatus   | OPEN / CLOSED                                 | ABIERTA / CERRADA                              |
-| Notification.type | PEDIDO_LISTO | PEDIDO_LISTO: aviso interno de pedido listo (HU-09) |
-| OrderType       | DINE_IN / TAKEOUT                             | SALA / LLEVAR                                  |
+| Enum              | Inglés (schema)                               | V_FINAL                                                                                                                        |
+| ----------------- | --------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------ |
+| DishStatus        | AVAILABLE / SOLD_OUT / DISABLED               | DISPONIBLE / DESHABILITADO. AGOTADO no aparece en V_FINAL; la disponibilidad se modela con `isAvailable` e `isDeleted` (DB-01) |
+| OrderStatus       | IN_PREPARATION / READY / DELIVERED / CANCELED | EN_PREPARACION / LISTO / ENTREGADO / CANCELADO                                                                                 |
+| OrderStatus       | PENDING                                       | PENDIENTE                                                                                                                      |
+| OrderStatus       | PENDING_PAYMENT                               | Valor heredado (antes PENDIENTE_PAGO); no existe en V_FINAL                                                                    |
+| OrderStatus       | CONFIRMED                                     | Sin equivalente en V_FINAL; pregunta abierta                                                                                   |
+| OrderItemStatus   | PENDING / IN_PREPARATION / READY / DELIVERED  | V_FINAL define estados solo a nivel de pedido; sin equivalencia propia (antes PENDIENTE / EN_PREPARACION / LISTO / ENTREGADO)  |
+| OrderItemStatus   | CANCELED                                      | Sin equivalente; pregunta abierta                                                                                              |
+| OrderType         | DINE_IN                                       | Comandas en mesa están fuera de alcance en V_FINAL (antes SALA)                                                                |
+| OrderType         | TAKEOUT                                       | LLEVAR (pedido para llevar, HU-02)                                                                                             |
+| OrderType         | DELIVERY                                      | Sin equivalente en V_FINAL; pregunta abierta                                                                                   |
+| PaymentStatus     | PAID / REJECTED                               | APROBADO / RECHAZADO, terminales (sección 2.8)                                                                                 |
+| PaymentStatus     | PENDING / REFUNDED                            | Sin estado equivalente en V_FINAL; las devoluciones están fuera de alcance                                                     |
+| ReservationStatus | CONFIRMED / CANCELED                          | CONFIRMADA / CANCELADA (secciones 2.4 y 2.8)                                                                                   |
+| ReservationStatus | PENDING / COMPLETED / NO_SHOW                 | Sin equivalente en V_FINAL                                                                                                     |
+| AccountStatus     | OPEN / CLOSED                                 | ABIERTA / CERRADA (HU anterior); la gestión de cuentas abiertas está fuera de alcance en V_FINAL                               |
+| AccountStatus     | CANCELED                                      | Sin equivalente; pregunta abierta                                                                                              |
+| Notification.type | PEDIDO_LISTO                                  | Texto libre (`VarChar(40)`), no enum; PEDIDO_LISTO, aviso interno de pedido listo (HU-09)                                      |
 
-| PaymentMode | HU       |
-| ----------- | -------- |
-| ONLINE      | EN_LINEA |
-| AT_COUNTER  | EN_CAJA  |
+| PaymentMode | V_FINAL                                                   |
+| ----------- | --------------------------------------------------------- |
+| ONLINE      | EN_LINEA (pago en línea, HU-06)                           |
+| AT_COUNTER  | EN_CAJA; el pago en caja está fuera de alcance en V_FINAL |
 
-| BranchConfig.isOpen | HU      |
+| BranchConfig.isOpen | V_FINAL |
 | ------------------- | ------- |
 | true                | ABIERTA |
 | false               | CERRADA |
 
 El detalle de `BranchConfig` está en [parametros-sucursal.md](parametros-sucursal.md).
 
-PENDING_PAYMENT representa el pedido para llevar pagado en línea antes de su cobro; BE-6.2.1 lo pasa a PENDING y cocina lo excluye mientras no se pague. No sustituye el estado del pago.
+PENDING_PAYMENT es un valor heredado: V_FINAL no lo define y su sección 2.8 indica que la orden queda PENDIENTE al crearse, sin implicar pago aprobado. Este documento lo conserva porque el schema lo contiene. Representaba el pedido para llevar pagado en línea antes de su cobro, que BE-06 (antes BE-6.2.1) pasa a PENDING. La regla de que cocina lo excluye mientras no se pague no coincide con V_FINAL, donde las órdenes PENDIENTE pueden entrar al tablero de cocina. No sustituye el estado del pago.
 
-BE-2.2.1 agrega `Order.paymentMode` como `payment_mode` nullable y el enum `PaymentMode`. El CHECK `orders_type_payment_mode_check` exige modalidad para TAKEOUT y la prohíbe para DINE_IN; compara `type::text` para no acoplarse a futuras reconstrucciones de `order_type`. El valor adicional DELIVERY queda sin regla nueva mientras su permanencia siga abierta. DB-6.2.1, a cargo de Diego, construirá encima los demás campos de pago sin redefinir `paymentMode`.
+BE-2.2.1 (numeración anterior; el pedido para llevar corresponde a la HU-02 de V_FINAL, con backend en BE-02) agrega `Order.paymentMode` como `payment_mode` nullable y el enum `PaymentMode`. El CHECK `orders_type_payment_mode_check` exige modalidad para TAKEOUT y la prohíbe para DINE_IN; compara `type::text` para no acoplarse a futuras reconstrucciones de `order_type`. El valor adicional DELIVERY queda sin regla nueva mientras su permanencia siga abierta. DB-06 de V_FINAL (antes DB-6.2.1), a cargo de Abraham, construirá encima los demás campos de pago sin redefinir `paymentMode`.
 
 La migración exige dishes vacía al agregar branch_id NOT NULL. Para datos existentes hace falta una asignación explícita acordada antes de migrar; no se deduce una sucursal ni se borran datos. También se rechazan textos o importes previos que no quepan en los tipos nuevos.
 
@@ -109,15 +129,15 @@ La respuesta del menú conserva el formato de `develop`: string con dos decimale
 
 ## Decisión del equipo: operation_id
 
-Se conserva `operationId String @unique @default(uuid())`, obligatorio. El UUID por defecto lo genera el cliente Prisma, no PostgreSQL. Identifica también pedidos de sala sin clave externa. En BE-2.2.1 el servicio debe exigir Idempotency-Key, pasar explícitamente el mismo UUID a `operationId` y reutilizarlo en reintentos; generar otro UUID por solicitud no garantiza idempotencia. La restricción UNIQUE y la resolución transaccional de colisiones permiten devolver el pedido existente, también bajo concurrencia. Hacerlo nullable no mejora esa garantía.
+Se conserva `operationId String @unique @default(uuid())`, obligatorio. El UUID por defecto lo genera el cliente Prisma, no PostgreSQL. Identifica también pedidos de sala sin clave externa. En BE-2.2.1 (BE-02 de V_FINAL) el servicio debe exigir Idempotency-Key, pasar explícitamente el mismo UUID a `operationId` y reutilizarlo en reintentos; generar otro UUID por solicitud no garantiza idempotencia. La restricción UNIQUE y la resolución transaccional de colisiones permiten devolver el pedido existente, también bajo concurrencia. Hacerlo nullable no mejora esa garantía.
 
 ## Preguntas abiertas
 
-¿Se eliminan CONFIRMED de OrderStatus, DELIVERY de OrderType y CANCELED de AccountStatus y OrderItemStatus para limitar los conjuntos a DB-2.1.1? La decisión sigue abierta; se conservan esos valores. También queda por acordar el uso de RESERVED y OUT_OF_SERVICE en mesas. No se eliminan esos estados ni se definen reglas de otras épicas.
+¿Se eliminan CONFIRMED de OrderStatus, DELIVERY de OrderType y CANCELED de AccountStatus y OrderItemStatus para limitar los conjuntos a DB-02 (antes DB-2.1.1)? La decisión sigue abierta; se conservan esos valores. También queda por acordar el uso de RESERVED y OUT_OF_SERVICE en mesas. No se eliminan esos estados ni se definen reglas de otras épicas.
 
 ## Datos iniciales
 
-`npm run db:seed:base` ejecuta el seed independiente del Anexo A. Hace upsert de sucursales por nombre (Centro y Santa Tecla), de seis mesas por `(branchId, number)` y de un usuario por cada rol mediante email. Mesero y cocina pertenecen a Centro; caja, inventario y gerente a Santa Tecla. Cliente y gerente general no tienen sucursal. Cada usuario nuevo incluye nombre, apellido y hash bcrypt de la clave demo. Los upserts no sobrescriben cambios posteriores ni contraseñas. Las escrituras forman una transacción; el seed heredado no se modifica.
+`npm run db:seed:base` ejecuta el seed independiente del Anexo A. Hace upsert de sucursales por nombre (Centro y Santa Tecla), de seis mesas por `(branchId, number)` y de usuarios de prueba mediante email: uno por rol, más el segundo gerente de Centro. Mesero y cocina pertenecen a Centro; caja, inventario y un gerente a Santa Tecla; además, un segundo gerente pertenece a Centro. Cliente y gerente general no tienen sucursal. Caja e inventario son roles heredados, sin uso en V_FINAL. Cada usuario nuevo incluye nombre, apellido y hash bcrypt de la clave demo. Los upserts no sobrescriben cambios posteriores ni contraseñas. Las escrituras forman una transacción; el seed heredado no se modifica.
 
 `npm run db:seed:catalog` ejecuta primero el seed base y agrega en cada sucursal las categorías Entradas, Platos fuertes, Bebidas y Postres mediante upsert por `(branchId, name)`, y diez platillos mediante `(branchId, name)`. Asigna y actualiza su displayOrder a 1, 2, 3 y 4 respectivamente, incluso en categorías existentes. Los precios son positivos y se expresan como strings decimales. Nueve platillos están disponibles; Arroz frito cuesta 6.50 en Centro y 7.00 en Santa Tecla para probar precios por sucursal, y Sopa wonton queda DISABLED con `isAvailable=false` para probar que no aparece. Las inserciones de catálogo forman una transacción; los upserts preservan precios y estados de platillos modificados después. El seed base sigue siendo independiente del catálogo.
 
