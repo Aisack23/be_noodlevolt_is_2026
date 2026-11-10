@@ -1,3 +1,4 @@
+import { UserRole } from '@PrismaClient';
 import {
   ConflictException,
   ForbiddenException,
@@ -19,7 +20,7 @@ import type {
   UpdateKitchenOrderStatusDto,
 } from '../dto/index.js';
 
-type KitchenActor = { id: string; role: string; branchId: string | null };
+type KitchenActor = { id: string; role: UserRole; branchId: string | null };
 
 @Injectable()
 export class KitchenService {
@@ -33,7 +34,7 @@ export class KitchenService {
   }
 
   async listReady(actor: KitchenActor): Promise<KitchenOrderResponseDto[]> {
-    const branchId = this.requireBranch(actor, 'WAITER');
+    const branchId = this.requireBranch(actor, UserRole.WAITER);
     return (await this.orders.findReadyQueue(branchId)).map(toResponse);
   }
 
@@ -41,7 +42,7 @@ export class KitchenService {
     actor: KitchenActor,
     orderId: string,
   ): Promise<KitchenOrderResponseDto> {
-    const branchId = this.requireBranch(actor, 'WAITER');
+    const branchId = this.requireBranch(actor, UserRole.WAITER);
     return this.transition(actor, branchId, orderId, 'DELIVERED');
   }
 
@@ -82,10 +83,10 @@ export class KitchenService {
   }
 
   private requireCookBranch(actor: KitchenActor): string {
-    return this.requireBranch(actor, 'COOK');
+    return this.requireBranch(actor, UserRole.COOK);
   }
 
-  private requireBranch(actor: KitchenActor, role: 'COOK' | 'WAITER'): string {
+  private requireBranch(actor: KitchenActor, role: UserRole): string {
     if (actor.role !== role || !actor.branchId)
       throw new ForbiddenException(
         'El usuario no tiene permiso o no está asignado a una sucursal.',

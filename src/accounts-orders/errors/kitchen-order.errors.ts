@@ -1,3 +1,5 @@
+import type { OrderStatus } from '@PrismaClient';
+
 export class KitchenOrderNotFoundError extends Error {
   constructor() {
     super('El pedido no existe en esta sucursal.');
@@ -6,8 +8,8 @@ export class KitchenOrderNotFoundError extends Error {
 
 export class KitchenOrderTransitionError extends Error {
   constructor(
-    readonly current: string,
-    readonly next: string,
+    readonly current: OrderStatus,
+    readonly next: OrderStatus,
   ) {
     super(
       'La transición no corresponde al estado actual del pedido; no se pueden saltar etapas.',

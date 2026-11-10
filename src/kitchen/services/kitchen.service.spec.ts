@@ -1,13 +1,12 @@
+import { UserRole } from '@PrismaClient';
 import {
   ConflictException,
   ForbiddenException,
   NotFoundException,
 } from '@nestjs/common';
+import { OrderRepository } from '@AccountsOrders/repositories';
 import {
   KitchenOrderTransitionError,
-  OrderRepository,
-} from '@AccountsOrders/repositories';
-import {
   KitchenOrderNotFoundError,
   KitchenOrderIntegrityError,
 } from '@AccountsOrders/errors';
@@ -16,7 +15,7 @@ import { KitchenService } from './kitchen.service.js';
 const branchId = '10000000-0000-4000-8000-000000000001';
 const cook = {
   id: '20000000-0000-4000-8000-000000000001',
-  role: 'COOK' as const,
+  role: UserRole.COOK,
   branchId,
 };
 const order = {
@@ -91,7 +90,7 @@ describe('KitchenService', () => {
 
   it('no permite que roles ajenos ni cocina sin sucursal operen el flujo', async () => {
     await expect(
-      service.list({ ...cook, role: 'WAITER' }),
+      service.list({ ...cook, role: UserRole.WAITER }),
     ).rejects.toBeInstanceOf(ForbiddenException);
     await expect(
       service.list({ ...cook, branchId: null }),
@@ -100,7 +99,7 @@ describe('KitchenService', () => {
   });
 
   it('lista READY y entrega con la identidad y sucursal del mesero', async () => {
-    const waiter = { ...cook, role: 'WAITER' };
+    const waiter = { ...cook, role: UserRole.WAITER };
     repository.findReadyQueue.mockResolvedValue([
       { ...order, status: 'READY' },
     ]);
@@ -124,7 +123,10 @@ describe('KitchenService', () => {
   });
 
   it('solo meseros con sucursal pueden listar listos y entregar', async () => {
-    for (const actor of [cook, { ...cook, role: 'WAITER', branchId: null }]) {
+    for (const actor of [
+      cook,
+      { ...cook, role: UserRole.WAITER, branchId: null },
+    ]) {
       await expect(service.listReady(actor)).rejects.toBeInstanceOf(
         ForbiddenException,
       );
@@ -137,7 +139,7 @@ describe('KitchenService', () => {
   });
 
   it('entrega traduce 404, transición 409 e integridad 409 y propaga errores inesperados', async () => {
-    const waiter = { ...cook, role: 'WAITER' };
+    const waiter = { ...cook, role: UserRole.WAITER };
     for (const [error, expected] of [
       [new KitchenOrderNotFoundError(), NotFoundException],
       [
