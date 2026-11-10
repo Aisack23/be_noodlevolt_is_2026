@@ -7,6 +7,7 @@ export interface MenuDish {
   name: string;
   description: string | null;
   price: MenuPrice;
+  isAvailable: boolean;
   status: 'AVAILABLE' | 'SOLD_OUT' | 'DISABLED';
   category: { id: string; name: string; displayOrder: number };
 }

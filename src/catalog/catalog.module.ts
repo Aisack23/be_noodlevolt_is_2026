@@ -1,3 +1,4 @@
+import { DishesController } from './menu/controllers/dishes.controller.js';
 import { Module } from '@nestjs/common';
 import { CategoryRepository, DishRepository } from '@Catalog/repositories';
 import {
@@ -9,7 +10,7 @@ import {
 } from '@Catalog/menu';
 
 @Module({
-  controllers: [MenuController],
+  controllers: [MenuController, DishesController],
   providers: [
     CategoryRepository,
     DishRepository,

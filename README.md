@@ -243,15 +243,18 @@ npm run db:reset
 
 Usuarios de prueba del Anexo A. Clave demo inicial: **`Demo1234!`**.
 
-| Correo                        | Rol               | Sucursal     |
-| ----------------------------- | ----------------- | ------------ |
-| demo@example.com              | CLIENT            | Sin sucursal |
-| waiter@example.com            | WAITER            | Centro       |
-| cook@example.com              | COOK              | Centro       |
-| cashier@example.com           | CASHIER           | Santa Tecla  |
-| inventory_manager@example.com | INVENTORY_MANAGER | Santa Tecla  |
-| branch_admin@example.com      | BRANCH_ADMIN      | Santa Tecla  |
-| general_manager@example.com   | GENERAL_MANAGER   | Sin sucursal |
+| Correo                          | Rol               | Sucursal     |
+| ------------------------------- | ----------------- | ------------ |
+| demo@example.com                | CLIENT            | Sin sucursal |
+| waiter@example.com              | WAITER            | Centro       |
+| cook@example.com                | COOK              | Centro       |
+| cashier@example.com             | CASHIER           | Santa Tecla  |
+| inventory_manager@example.com   | INVENTORY_MANAGER | Santa Tecla  |
+| branch_admin@example.com        | BRANCH_ADMIN      | Santa Tecla  |
+| branch_admin_centro@example.com | BRANCH_ADMIN      | Centro       |
+| general_manager@example.com     | GENERAL_MANAGER   | Sin sucursal |
+
+Los dos BRANCH_ADMIN permiten demostrar el aislamiento: cada gerente recibe 403 al operar sobre la sucursal del otro.
 
 Con DATABASE_URL configurada hacia el PostgreSQL de Docker y las migraciones aplicadas:
 
@@ -312,6 +315,9 @@ Base: `http://localhost:3000/api/v1` · Documentación interactiva: `http://loca
 | `POST` | `/auth/refresh` | — | `200` | Renueva el par de tokens |
 | `POST` | `/auth/logout` | — | `204` | Cierra la sesión |
 | `GET` | `/auth/me` | Bearer | `200` | Usuario autenticado |
+| `GET` | `/orders/me` | Bearer | `200` | Lista los pedidos propios del cliente autenticado |
+| `POST` | `/reviews` | Bearer | `201` | Crea una reseña para un pedido entregado del cliente autenticado |
+| `GET` | `/branches/:id/rating` | — | `200` | Promedio y cantidad de reseñas de una sucursal |
 
 ### Ejemplos
 
@@ -382,6 +388,75 @@ curl -X POST $BASE/auth/logout \
 ```
 
 Responde `204 No Content`. Es idempotente: repetirlo con un token ya revocado también devuelve `204`, para no convertirse en un oráculo que revele qué tokens existen.
+
+**Listar pedidos propios**
+
+```bash
+curl "$BASE/orders/me?status=DELIVERED" \
+  -H "Authorization: Bearer $ACCESS_TOKEN"
+```
+
+```jsonc
+// 200 OK
+[
+  {
+    "id": "11111111-1111-4111-8111-111111111111",
+    "orderNumber": "ORD-2026-001",
+    "status": "DELIVERED",
+    "total": "125.50",
+    "createdAt": "2026-11-06T22:00:00.000Z",
+    "branchId": "44444444-4444-4444-8444-444444444444",
+    "branchName": "Sucursal Centro",
+    "review": { "id": "22222222-2222-4222-8222-222222222222", "rating": 5 }
+  }
+]
+```
+
+Devuelve solo los pedidos del cliente autenticado, ordenados por `createdAt` descendente y limitados a 50 resultados. `status` es opcional; si es inválido responde `400`. Si no hay pedidos, responde `200` con `[]`. Solo `CLIENT` puede acceder; sin sesión responde `401`, y si el rol no es cliente responde `403`.
+
+**Crear reseña**
+
+```bash
+curl -X POST $BASE/reviews \
+  -H 'Authorization: Bearer $ACCESS_TOKEN' \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "orderId": "22222222-2222-4222-8222-222222222222",
+    "rating": 5,
+    "comment": "Excelente servicio"
+  }'
+```
+
+```jsonc
+// 201 Created
+{
+  "review": {
+    "id": "11111111-1111-4111-8111-111111111111",
+    "orderId": "22222222-2222-4222-8222-222222222222",
+    "customerId": "33333333-3333-4333-8333-333333333333",
+    "branchId": "44444444-4444-4444-8444-444444444444",
+    "rating": 5,
+    "comment": "Excelente servicio",
+    "createdAt": "2026-11-06T22:00:00.000Z"
+  },
+  "branchRating": { "average": 4.5, "count": 3 }
+}
+```
+
+Solo clientes autenticados pueden crear reseñas. El pedido debe pertenecer al usuario y estar en estado `DELIVERED`; si el pedido no existe responde `404`, si no pertenece al cliente `403`, si está `PENDING` o ya existe reseña responde `409`, y si `rating` no es 1..5 `400`.
+
+**Promedio de reseñas por sucursal**
+
+```bash
+curl $BASE/branches/44444444-4444-4444-8444-444444444444/rating
+```
+
+```jsonc
+// 200 OK
+{ "average": 4.5, "count": 12 }
+```
+
+Si la sucursal no existe, responde `404`. Si no hay reseñas, la respuesta es `{ "average": null, "count": 0 }`.
 
 ---
 

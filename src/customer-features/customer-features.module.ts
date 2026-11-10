@@ -1,30 +1,44 @@
 
 import { Module } from '@nestjs/common';
+import { LoyaltyController } from './controllers/loyalty.controller.js';
+import { LoyaltyService } from './services/loyalty.service.js';
+import { LoyaltyRepository } from './repositories/loyalty.repository.js';
+import { AccountsOrdersModule } from '@AccountsOrders';
+import { BranchesModule } from '@Branches';
+import { ReviewsController, BranchesReviewsController } from './controllers/index.js';
 import {
-  ReviewRepository,
-  PointsRuleRepository,
-  PointsMovementRepository,
-  BenefitRepository,
-  RedemptionRepository,
-  NotificationRepository,
+ ReviewRepository,
+ PointsRuleRepository,
+ PointsMovementRepository,
+ BenefitRepository,
+ RedemptionRepository,
+ NotificationRepository,
 } from '@CustomerFeatures/repositories';
+import { ReviewsService } from './services/reviews.service.js';
 
 @Module({
-  providers: [
-    ReviewRepository,
-    PointsRuleRepository,
-    PointsMovementRepository,
-    BenefitRepository,
-    RedemptionRepository,
-    NotificationRepository,
-  ],
-  exports: [
-    ReviewRepository,
-    PointsRuleRepository,
-    PointsMovementRepository,
-    BenefitRepository,
-    RedemptionRepository,
-    NotificationRepository,
-  ],
+ imports: [AccountsOrdersModule, BranchesModule],
+ controllers: [ReviewsController, BranchesReviewsController, LoyaltyController],
+ providers: [
+   LoyaltyService,
+   LoyaltyRepository,
+   ReviewRepository,
+   ReviewsService,
+   PointsRuleRepository,
+   PointsMovementRepository,
+   BenefitRepository,
+   RedemptionRepository,
+   NotificationRepository,
+ ],
+ exports: [
+   LoyaltyRepository,
+   ReviewRepository,
+   ReviewsService,
+   PointsRuleRepository,
+   PointsMovementRepository,
+   BenefitRepository,
+   RedemptionRepository,
+   NotificationRepository,
+ ],
 })
 export class CustomerFeaturesModule {}

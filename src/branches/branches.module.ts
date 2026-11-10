@@ -1,3 +1,5 @@
+import { BranchesQueryController } from './controllers/branches-query.controller.js';
+import { BranchesQueryService } from './services/branches-query.service.js';
 import { Module } from '@nestjs/common';
 import { BranchRepository } from '@Branches/repositories';
 import {
@@ -7,8 +9,13 @@ import {
 } from '@Branches/config';
 
 @Module({
-  controllers: [BranchConfigController],
-  providers: [BranchRepository, BranchConfigRepository, BranchConfigService],
+  controllers: [BranchConfigController, BranchesQueryController],
+  providers: [
+    BranchRepository,
+    BranchConfigRepository,
+    BranchConfigService,
+    BranchesQueryService,
+  ],
   exports: [BranchRepository],
 })
 export class BranchesModule {}
