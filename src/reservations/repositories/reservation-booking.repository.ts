@@ -1,10 +1,9 @@
+import { Inject, Injectable } from '@nestjs/common';
 import {
-  BadRequestException,
-  ConflictException,
-  Inject,
-  Injectable,
-  NotFoundException,
-} from '@nestjs/common';
+  ReservationBranchUnavailableError,
+  ReservationDateInPastError,
+  ReservationUnavailableError,
+} from '../errors/reservation-booking.errors.js';
 import { PrismaService } from '@Prisma/services';
 import { Prisma } from '@PrismaClient';
 import type { CreateReservationDto } from '../dto/create-reservation.dto.js';
@@ -24,18 +23,15 @@ export class ReservationBookingRepository {
       async (tx) => {
         const branches = await tx.$queryRaw<{ id: string }[]>(Prisma.sql`
         SELECT id FROM branches WHERE id=${input.branchId}::uuid AND is_active=true FOR SHARE`);
-        if (!branches.length)
-          throw new NotFoundException('La sucursal no existe o está inactiva.');
+        if (!branches.length) throw new ReservationBranchUnavailableError();
         const tables = await tx.$queryRaw<{ id: string }[]>(Prisma.sql`
         SELECT id FROM tables WHERE branch_id=${input.branchId}::uuid
-        AND capacity>=${input.guests} AND status='AVAILABLE'
+        AND capacity>=${input.guests} AND status <> 'OUT_OF_SERVICE'
         ORDER BY capacity,id FOR UPDATE`);
         if (startsAt.getTime() <= Date.now())
-          throw new BadRequestException(
-            'La reservación debe ser para una fecha futura.',
-          );
+          throw new ReservationDateInPastError();
         if (!tables.length)
-          throw new ConflictException(
+          throw new ReservationUnavailableError(
             'No hay una mesa disponible con capacidad suficiente.',
           );
         const conflicts = await tx.reservation.findMany({
@@ -50,7 +46,7 @@ export class ReservationBookingRepository {
         const occupied = new Set(conflicts.map((item) => item.tableId));
         const table = tables.find((item) => !occupied.has(item.id));
         if (!table)
-          throw new ConflictException(
+          throw new ReservationUnavailableError(
             'No hay una mesa disponible en el intervalo solicitado.',
           );
         const reservation = await tx.reservation.create({
