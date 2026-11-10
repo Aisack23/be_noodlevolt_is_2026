@@ -1,7 +1,7 @@
 
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '@Prisma/services';
-import { Prisma, type Branch } from '@PrismaClient';
+import type { Branch } from '@PrismaClient';
 
 export interface CreateBranchData {
   name: string;

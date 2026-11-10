@@ -11,7 +11,7 @@ import { Prisma } from '@PrismaClient';
 import type { CardDecision } from '../services/test-card-gateway.js';
 import type { PaymentResultDto } from '../dto/payment-result.dto.js';
 
-const payableSelect = { customerId: true, status: true } as const;
+const payableSelect = { customerId: true, status: true, type: true } as const;
 
 @Injectable()
 export class SimulatedPaymentsRepository {
@@ -22,7 +22,7 @@ export class SimulatedPaymentsRepository {
       where: { id: orderId },
       select: payableSelect,
     });
-    assertOwner(order, customerId);
+    assertPayableOrder(order, customerId);
     const approved = await this.prisma.payment.findFirst({
       where: { orderId, status: 'PAID' },
       select: { id: true },
@@ -49,7 +49,7 @@ export class SimulatedPaymentsRepository {
             items: { select: { unitPrice: true, quantity: true } },
           },
         });
-        assertOwner(order, customerId);
+        assertPayableOrder(order, customerId);
         const approved = await tx.payment.findFirst({
           where: { orderId, status: 'PAID' },
           select: { id: true },
@@ -103,13 +103,14 @@ export class SimulatedPaymentsRepository {
   }
 }
 
-function assertOwner<T extends { customerId: string | null; status: string }>(
-  order: T | null,
-  customerId: string,
-): asserts order is T {
+function assertPayableOrder<
+  T extends { customerId: string | null; status: string; type: string },
+>(order: T | null, customerId: string): asserts order is T {
   if (!order) throw new NotFoundException('El pedido no existe.');
   if (order.customerId !== customerId)
     throw new ForbiddenException('El pedido no pertenece al cliente.');
+  if (order.type !== 'TAKEOUT')
+    throw new ConflictException('Solo se pueden pagar pedidos para llevar.');
   if (order.status === 'CANCELED')
     throw new ConflictException('El pedido está cancelado.');
 }
