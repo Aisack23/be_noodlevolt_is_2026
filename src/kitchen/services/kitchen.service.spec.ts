@@ -12,7 +12,7 @@ import { KitchenService } from './kitchen.service.js';
 const branchId = '10000000-0000-4000-8000-000000000001';
 const cook = {
   id: '20000000-0000-4000-8000-000000000001',
-  role: 'COOK',
+  role: 'COOK' as const,
   branchId,
 };
 const order = {

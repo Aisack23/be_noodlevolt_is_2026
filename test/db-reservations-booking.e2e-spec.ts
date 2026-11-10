@@ -255,3 +255,5 @@ describe.sequential('HU-04: reservación con PostgreSQL real', () => {
     );
     await post().expect(201);
   });
+
+});
