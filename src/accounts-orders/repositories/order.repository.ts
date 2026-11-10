@@ -1,5 +1,6 @@
+import { NotificationsService } from '../../notifications/services/notifications.service.js';
 
-import { Injectable } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import {
   Order,
   OrderItemStatus,
@@ -70,7 +71,10 @@ export interface KitchenOrderRow {
 
 @Injectable()
 export class OrderRepository {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    @Inject(PrismaService) private readonly prisma: PrismaService,
+    @Inject(NotificationsService) private readonly notifications: NotificationsService,
+  ) {}
 
   create(data: CreateOrderData): Promise<Order> {
     return this.prisma.order.create({
@@ -235,6 +239,8 @@ export class OrderRepository {
 
       const currentStatus = locked[0].status;
       if (currentStatus === nextStatus) {
+        if (nextStatus === 'READY')
+          await this.notifications.notifyOrderReady(orderId, tx);
         return tx.order.findUniqueOrThrow({
           where: { id: orderId },
           select: kitchenOrderSelect,
@@ -265,6 +271,7 @@ export class OrderRepository {
           newStatus: nextStatus,
         },
       });
+      if (nextStatus === 'READY') await this.notifications.notifyOrderReady(orderId, tx);
       return tx.order.findUniqueOrThrow({
         where: { id: orderId },
         select: kitchenOrderSelect,
