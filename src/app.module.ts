@@ -18,6 +18,7 @@ import {ReservationsModule} from '@Reservations';
 import {PurchasesModule} from '@Purchase';
 import {PaymentsModule} from '@Payments';
 import { CustomerFeaturesModule } from '@CustomerFeatures';
+import { KitchenModule } from './kitchen/kitchen.module.js';
 
 @Module({
   imports: [
@@ -42,6 +43,7 @@ import { CustomerFeaturesModule } from '@CustomerFeatures';
     RecipesModule,
     PaymentsModule,
     CustomerFeaturesModule,
+    KitchenModule,
   ],
   providers: [
     {
