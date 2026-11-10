@@ -26,6 +26,8 @@ export class PrismaService
   private readonly logger = new Logger(PrismaService.name);
 
   constructor(configService: ConfigService<EnvConfig, true>) {
+    const connectionString = configService.get('DATABASE_URL', { infer: true });
+    console.log('>>> URL LEÍDA POR NESTJS:', connectionString);
     const adapter = new PrismaPg({
       connectionString: configService.get('DATABASE_URL', { infer: true }),
     });
