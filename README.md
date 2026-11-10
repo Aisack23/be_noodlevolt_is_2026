@@ -316,6 +316,10 @@ Base: `http://localhost:3000/api/v1` · Documentación interactiva: `http://loca
 | `POST` | `/auth/logout` | — | `204` | Cierra la sesión |
 | `GET` | `/auth/me` | Bearer | `200` | Usuario autenticado |
 | `GET` | `/orders/me` | Bearer | `200` | Lista los pedidos propios del cliente autenticado |
+| `GET` | `/kitchen/orders` | Bearer COOK | `200` | Pedidos pendientes/en preparación de su sucursal |
+| `PATCH` | `/kitchen/orders/:id/status` | Bearer COOK | `200` | Avanza preparación; registra aviso al llegar a READY |
+| `GET` | `/kitchen/orders/ready` | Bearer WAITER | `200` | Pedidos listos de su sucursal, ordenados por llegada a READY |
+| `PATCH` | `/kitchen/orders/:id/deliver` | Bearer WAITER | `200` | Confirma entrega de un pedido READY de su sucursal |
 | `POST` | `/reviews` | Bearer | `201` | Crea una reseña para un pedido entregado del cliente autenticado |
 | `GET` | `/branches/:id/rating` | — | `200` | Promedio y cantidad de reseñas de una sucursal |
 
