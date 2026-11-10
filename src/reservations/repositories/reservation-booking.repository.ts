@@ -70,7 +70,7 @@ export class ReservationBookingRepository {
             endsAt: true,
           },
         });
-        return {
+               return {
           ...reservation,
           startsAt: reservation.startsAt.toISOString(),
           endsAt: reservation.endsAt.toISOString(),
