@@ -56,7 +56,7 @@ describe.sequential('HU-04: reservación con PostgreSQL real', () => {
             index === 1 ? 'OUT_OF_SERVICE' : 'AVAILABLE',
           ],
         );
-      await client.query('COMMIT');
+      await client.query('COMMIT');  
       created = true;
     } catch (error) {
       await client.query('ROLLBACK');
@@ -149,6 +149,23 @@ describe.sequential('HU-04: reservación con PostgreSQL real', () => {
     );
     expect(count.rows[0].n).toBe(0);
   });
+  it('permite reservar una mesa OCCUPIED ahora para una fecha futura sin traslapes', async () => {
+    await client!.query("UPDATE tables SET status='OCCUPIED' WHERE id=$1", [
+      tables[0],
+    ]);
+    try {
+      const response = await post().expect(201);
+      expect(response.body).toMatchObject({
+        tableId: tables[0],
+        status: 'CONFIRMED',
+      });
+    } finally {
+      await client!.query("UPDATE tables SET status='AVAILABLE' WHERE id=$1", [
+        tables[0],
+      ]);
+    }
+  });
+
   it('no usa mesas de otra sucursal ni fuera de servicio', async () => {
     await post({ guests: 5 }).expect(409);
   });
@@ -160,17 +177,76 @@ describe.sequential('HU-04: reservación con PostgreSQL real', () => {
     const second = await post().expect(201);
     expect(second.body.tableId).toBe(tables[1]);
   });
-  it('dos confirmaciones simultáneas no duplican la mesa/intervalo', async () => {
-    const results = await Promise.all([post(), post()]);
-    expect(
-      results.map((result) => result.status).sort((a, b) => a - b),
-    ).toEqual([201, 409]);
-    const count = await client!.query(
-      'SELECT count(*)::int AS n FROM reservations WHERE branch_id=$1',
-      [branches[0]],
-    );
-    expect(count.rows[0].n).toBe(1);
-  });
+  it('dos confirmaciones con barrera no duplican la mesa/intervalo', async () => {
+    const suffix = randomUUID().replaceAll('-', '');
+    const functionName = `hu04_gate_${suffix}`;
+    const triggerName = `hu04_gate_${suffix}`;
+    const gateKey = Number.parseInt(suffix.slice(0, 8), 16) % 2147483647;
+    const db = client!;
+    let locked = false;
+    let requests: Promise<request.Response>[] = [];
+
+    await db.query(`
+      CREATE FUNCTION "${functionName}"() RETURNS trigger LANGUAGE plpgsql AS $$
+      BEGIN
+        IF NEW.table_id = '${tables[0]}'::uuid THEN
+          PERFORM pg_advisory_xact_lock(404, ${gateKey});
+        END IF;
+        RETURN NEW;
+      END;
+      $$
+    `);
+    try {
+      await db.query(`CREATE TRIGGER "${triggerName}" BEFORE INSERT ON reservations
+        FOR EACH ROW EXECUTE FUNCTION "${functionName}"()`);
+      await db.query('SELECT pg_advisory_lock(404, $1::int)', [gateKey]);
+      locked = true;
+      requests = [post(), post()].map((call) =>
+        call.then((response) => response),
+      );
+
+      const deadline = Date.now() + 5000;
+      let bothWaiting = false;
+      while (Date.now() < deadline) {
+        const waiting = await db.query<{ count: number }>(`
+          SELECT count(*)::int AS count FROM pg_stat_activity
+          WHERE datname=current_database() AND pid<>pg_backend_pid()
+            AND wait_event_type='Lock'
+            AND (query ILIKE '%INSERT%reservations%' OR query ILIKE '%FROM tables%')
+        `);
+        if (waiting.rows[0].count >= 2) {
+          bothWaiting = true;
+          break;
+        }
+        await new Promise((resolve) => setTimeout(resolve, 25));
+      }
+
+      await db.query('SELECT pg_advisory_unlock(404, $1::int)', [gateKey]);
+      locked = false;
+      const results = await Promise.all(requests);
+      expect(bothWaiting).toBe(true);
+      expect(
+        results.map((result) => result.status).sort((a, b) => a - b),
+      ).toEqual([201, 409]);
+      const count = await db.query(
+        'SELECT count(*)::int AS n FROM reservations WHERE branch_id=$1',
+        [branches[0]],
+      );
+      expect(count.rows[0].n).toBe(1);
+    } finally {
+      if (locked)
+        await db.query('SELECT pg_advisory_unlock(404, $1::int)', [gateKey]);
+      await Promise.allSettled(requests);
+      try {
+        await db.query(
+          `DROP TRIGGER IF EXISTS "${triggerName}" ON reservations`,
+        );
+      } finally {
+        await db.query(`DROP FUNCTION IF EXISTS "${functionName}"()`);
+      }
+    }
+  }, 15000);
+
   it('ignora reservaciones canceladas al calcular disponibilidad', async () => {
     const first = await post().expect(201);
     await client!.query(
@@ -179,4 +255,3 @@ describe.sequential('HU-04: reservación con PostgreSQL real', () => {
     );
     await post().expect(201);
   });
-});
