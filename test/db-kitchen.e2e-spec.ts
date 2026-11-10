@@ -462,6 +462,24 @@ describe.sequential('BE-03: cocina y entrega contra PostgreSQL', () => {
     expect(await snapshot(id)).toEqual(before);
   });
 
+  it('READY sincroniza una línea atrasada en PENDING y conserva su nota', async () => {
+    const id = await order('IN_PREPARATION');
+    await client.query(
+      "UPDATE order_items SET status='PENDING' WHERE order_id=$1",
+      [id],
+    );
+    const response = await patch(id, 'READY').expect(200);
+    expect(response.body.items).toMatchObject([
+      { status: 'READY', note: 'Sin cebolla' },
+    ]);
+    expect((await snapshot(id)).items[0]).toMatchObject({
+      status: 'READY',
+      note: 'Sin cebolla',
+    });
+    await deliver(id).expect(200);
+    expect((await snapshot(id)).items[0].status).toBe('DELIVERED');
+  });
+
   it('sin customer_id no genera aviso al pasar a READY', async () => {
     const id = await order('IN_PREPARATION', 0, null);
     await patch(id, 'READY').expect(200);

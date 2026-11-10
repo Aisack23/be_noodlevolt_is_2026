@@ -264,7 +264,18 @@ export class OrderRepository {
           data: { status: nextStatus, updatedBy: userId },
         });
         await tx.orderItem.updateMany({
-          where: { orderId, status: currentStatus as OrderItemStatus },
+          where: {
+            orderId,
+            status: {
+              in: [
+                OrderItemStatus.PENDING,
+                OrderItemStatus.IN_PREPARATION,
+                ...(nextStatus === OrderStatus.DELIVERED
+                  ? [OrderItemStatus.READY]
+                  : []),
+              ],
+            },
+          },
           data: { status: nextStatus },
         });
         await tx.orderStatusHistory.create({
