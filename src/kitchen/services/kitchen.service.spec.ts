@@ -7,6 +7,10 @@ import {
   KitchenOrderTransitionError,
   OrderRepository,
 } from '@AccountsOrders/repositories';
+import {
+  KitchenOrderNotFoundError,
+  KitchenOrderIntegrityError,
+} from '@AccountsOrders/errors';
 import { KitchenService } from './kitchen.service.js';
 
 const branchId = '10000000-0000-4000-8000-000000000001';
@@ -36,6 +40,7 @@ const order = {
 describe('KitchenService', () => {
   const repository = {
     findKitchenQueue: vi.fn(),
+    findReadyQueue: vi.fn(),
     transitionKitchenStatus: vi.fn(),
   };
   const service = new KitchenService(repository as unknown as OrderRepository);
@@ -94,8 +99,67 @@ describe('KitchenService', () => {
     expect(repository.findKitchenQueue).not.toHaveBeenCalled();
   });
 
+  it('lista READY y entrega con la identidad y sucursal del mesero', async () => {
+    const waiter = { ...cook, role: 'WAITER' };
+    repository.findReadyQueue.mockResolvedValue([
+      { ...order, status: 'READY' },
+    ]);
+    await expect(service.listReady(waiter)).resolves.toMatchObject([
+      { status: 'READY' },
+    ]);
+    expect(repository.findReadyQueue).toHaveBeenCalledWith(branchId);
+    repository.transitionKitchenStatus.mockResolvedValue({
+      ...order,
+      status: 'DELIVERED',
+    });
+    await expect(service.deliver(waiter, order.id)).resolves.toMatchObject({
+      status: 'DELIVERED',
+    });
+    expect(repository.transitionKitchenStatus).toHaveBeenCalledWith(
+      branchId,
+      order.id,
+      waiter.id,
+      'DELIVERED',
+    );
+  });
+
+  it('solo meseros con sucursal pueden listar listos y entregar', async () => {
+    for (const actor of [cook, { ...cook, role: 'WAITER', branchId: null }]) {
+      await expect(service.listReady(actor)).rejects.toBeInstanceOf(
+        ForbiddenException,
+      );
+      await expect(service.deliver(actor, order.id)).rejects.toBeInstanceOf(
+        ForbiddenException,
+      );
+    }
+    expect(repository.findReadyQueue).not.toHaveBeenCalled();
+    expect(repository.transitionKitchenStatus).not.toHaveBeenCalled();
+  });
+
+  it('entrega traduce 404, transición 409 e integridad 409 y propaga errores inesperados', async () => {
+    const waiter = { ...cook, role: 'WAITER' };
+    for (const [error, expected] of [
+      [new KitchenOrderNotFoundError(), NotFoundException],
+      [
+        new KitchenOrderTransitionError('PENDING', 'DELIVERED'),
+        ConflictException,
+      ],
+      [new KitchenOrderIntegrityError(), ConflictException],
+    ] as const) {
+      repository.transitionKitchenStatus.mockRejectedValueOnce(error);
+      await expect(service.deliver(waiter, order.id)).rejects.toBeInstanceOf(
+        expected,
+      );
+    }
+    const unexpected = new Error('Database unavailable');
+    repository.transitionKitchenStatus.mockRejectedValueOnce(unexpected);
+    await expect(service.deliver(waiter, order.id)).rejects.toBe(unexpected);
+  });
+
   it('traduce pedido fuera de alcance a 404 y transición inválida a 409', async () => {
-    repository.transitionKitchenStatus.mockResolvedValueOnce(null);
+    repository.transitionKitchenStatus.mockRejectedValueOnce(
+      new KitchenOrderNotFoundError(),
+    );
     await expect(
       service.updateStatus(cook, order.id, { status: 'READY' }),
     ).rejects.toBeInstanceOf(NotFoundException);
