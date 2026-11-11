@@ -69,6 +69,16 @@ Deshabilita el escaneo secuencial dentro de su transacción para comprobar que e
 índice parcial es elegible en una tabla temporal pequeña; en producción la
 elección final del plan depende de estadísticas y cardinalidad.
 
+Nota de ejecución: la validación no debe exigir que PostgreSQL use exactamente
+`payments_paid_branch_id_created_at_idx` en todas las ejecuciones. El planner es
+libre de elegir un `Seq Scan` o un `Bitmap Index Scan` según el tamaño de la
+tabla, la selectividad y las estadísticas. En la base local de esta sesión se
+observó un plan con `Seq Scan` aunque el índice existía y la consulta devolvía
+resultados correctos; eso no invalida la migración ni la lógica del reporte. Por
+tanto, la prueba debe centrarse en el resultado funcional o, como máximo, en que
+el índice sea elegible, no en una cadena literal exacta dentro del JSON de
+`EXPLAIN`.
+
 ## Seed y validación
 
 `npm run db:seed:sales-report` inserta de forma idempotente ocho pedidos de
