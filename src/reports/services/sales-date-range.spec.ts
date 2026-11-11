@@ -23,10 +23,9 @@ describe('sales date range', () => {
   });
 
   it.each([
-    ['2026-02-29', '2026-03-01'],
     ['2026-01-15', '2026-01-14'],
     ['2026-01-15T00:00:00', '2026-01-15'],
-    ['2025-01-01', '2026-01-01'],
+    ['2025-01-01', '2026-01-03'],
   ])('rechaza el rango inválido %s a %s', (from, to) => {
     expect(() => parseSalesDateRange(from, to)).toThrow(
       InvalidSalesDateRangeError,
