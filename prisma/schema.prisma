@@ -230,6 +230,7 @@ model User {
   customerAccounts   Account[]            @relation("AccountCustomer")
   customerOrders     Order[]              @relation("OrderCustomer")
   waiterOrders       Order[]              @relation("OrderWaiter")
+  updatedOrders      Order[]              @relation("OrderUpdatedBy")
   reservations       Reservation[]
   inventoryMovements InventoryMovement[]
   redemptions        Redemption[]
@@ -361,6 +362,7 @@ model Order {
 
   total            Decimal?      @db.Decimal(14, 2)
   requestHash      String?       @map("request_hash") @db.VarChar(64)
+  updatedBy        String?       @map("updated_by") @db.Uuid
   status           OrderStatus   @default(PENDING)
   paymentMode      PaymentMode?  @map("payment_mode")
   operationId      String        @unique @default(uuid()) @map("operation_id") @db.Uuid
@@ -372,6 +374,8 @@ model Order {
   account  Account? @relation(fields: [accountId], references: [id], onDelete: Restrict)
   customer User?    @relation("OrderCustomer", fields: [customerId], references: [id], onDelete: SetNull)
   waiter   User?    @relation("OrderWaiter", fields: [waiterId], references: [id], onDelete: SetNull)
+
+  updatedByUser User? @relation("OrderUpdatedBy", fields: [updatedBy], references: [id], onDelete: SetNull)
 
   items          OrderItem[]
   payments       Payment[]

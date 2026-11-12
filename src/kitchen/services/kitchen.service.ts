@@ -1,3 +1,4 @@
+import { UserRole } from '@PrismaClient';
 import {
   ConflictException,
   ForbiddenException,
@@ -6,17 +7,20 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import {
-  KitchenOrderTransitionError,
   OrderRepository,
   type KitchenOrderRow,
 } from '@AccountsOrders/repositories';
-import { UserRole, type User } from '@PrismaClient';
+import {
+  KitchenOrderIntegrityError,
+  KitchenOrderNotFoundError,
+  KitchenOrderTransitionError,
+} from '@AccountsOrders/errors';
 import type {
   KitchenOrderResponseDto,
   UpdateKitchenOrderStatusDto,
 } from '../dto/index.js';
 
-type KitchenActor = Pick<User, 'id' | 'role' | 'branchId'>;
+type KitchenActor = { id: string; role: UserRole; branchId: string | null };
 
 @Injectable()
 export class KitchenService {
@@ -29,33 +33,63 @@ export class KitchenService {
     return (await this.orders.findKitchenQueue(branchId)).map(toResponse);
   }
 
+  async listReady(actor: KitchenActor): Promise<KitchenOrderResponseDto[]> {
+    const branchId = this.requireBranch(actor, UserRole.WAITER);
+    return (await this.orders.findReadyQueue(branchId)).map(toResponse);
+  }
+
+  async deliver(
+    actor: KitchenActor,
+    orderId: string,
+  ): Promise<KitchenOrderResponseDto> {
+    const branchId = this.requireBranch(actor, UserRole.WAITER);
+    return this.transition(actor, branchId, orderId, 'DELIVERED');
+  }
+
   async updateStatus(
     actor: KitchenActor,
     orderId: string,
     input: UpdateKitchenOrderStatusDto,
   ): Promise<KitchenOrderResponseDto> {
     const branchId = this.requireCookBranch(actor);
+    return this.transition(actor, branchId, orderId, input.status);
+  }
+
+  private async transition(
+    actor: KitchenActor,
+    branchId: string,
+    orderId: string,
+    nextStatus: 'IN_PREPARATION' | 'READY' | 'DELIVERED',
+  ): Promise<KitchenOrderResponseDto> {
     try {
-      const order = await this.orders.transitionKitchenStatus(
-        branchId,
-        orderId,
-        actor.id,
-        input.status,
+      return toResponse(
+        await this.orders.transitionKitchenStatus(
+          branchId,
+          orderId,
+          actor.id,
+          nextStatus,
+        ),
       );
-      if (!order)
-        throw new NotFoundException('El pedido no existe en esta sucursal.');
-      return toResponse(order);
     } catch (error) {
-      if (error instanceof KitchenOrderTransitionError)
+      if (error instanceof KitchenOrderNotFoundError)
+        throw new NotFoundException(error.message);
+      if (
+        error instanceof KitchenOrderTransitionError ||
+        error instanceof KitchenOrderIntegrityError
+      )
         throw new ConflictException(error.message);
       throw error;
     }
   }
 
   private requireCookBranch(actor: KitchenActor): string {
-    if (actor.role !== UserRole.COOK || !actor.branchId)
+    return this.requireBranch(actor, UserRole.COOK);
+  }
+
+  private requireBranch(actor: KitchenActor, role: UserRole): string {
+    if (actor.role !== role || !actor.branchId)
       throw new ForbiddenException(
-        'Solo el personal de cocina asignado a una sucursal puede gestionar pedidos.',
+        'El usuario no tiene permiso o no está asignado a una sucursal.',
       );
     return actor.branchId;
   }

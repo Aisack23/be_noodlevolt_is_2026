@@ -18,6 +18,7 @@
     "db:seed:loyalty": "tsx prisma/seeds/run-loyalty.ts",
     "db:seed:base": "tsx prisma/seeds/run-base.ts",
     "db:seed:review": "tsx prisma/seeds/run-review.ts",
+    "db:seed:sales-report": "tsx prisma/seeds/run-sales-report.ts",
     "db:seed:catalog": "tsx prisma/seeds/run-catalog.ts",
     "db:seed:branch-config": "tsx prisma/seeds/run-branch-config.ts",
     "db:seed:inventory": "tsx prisma/seeds/run-inventory.ts",

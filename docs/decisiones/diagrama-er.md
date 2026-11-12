@@ -1,6 +1,6 @@
 # Diagrama ER
 
-Modelo vigente del catálogo por sucursal (DB-01), del inventario de insumos (DB-05), de las reseñas por pedido (DB-06), del programa de lealtad (DB-07) y de los parámetros de sucursal (DB-11). Las demás tasks de datos agregan aquí sus entidades. Las reglas y justificaciones están en [modelo-datos.md](modelo-datos.md).
+Modelo vigente del catálogo por sucursal (DB-01), de la auditoría de cocina y entrega (DB-03), del inventario de insumos (DB-05), de las reseñas por pedido (DB-06), del programa de lealtad (DB-07) y de los parámetros de sucursal (DB-11). Las demás tasks de datos agregan aquí sus entidades. Las reglas y justificaciones están en [modelo-datos.md](modelo-datos.md).
 
 ```mermaid
 erDiagram
@@ -16,6 +16,28 @@ erDiagram
     users |o--o{ branch_configs : "cambió por última vez"
     users ||--o{ orders : "realiza"
     users ||--o{ reviews : "escribe"
+    users |o--o{ orders : "último cambio (updated_by, DELETE SET NULL)"
+    orders ||--o{ order_status_history : "registra transiciones"
+    users |o--o{ order_status_history : "autor (DELETE SET NULL)"
+    orders ||--o{ order_items : "contiene líneas con nota"
+
+    order_status_history {
+        uuid id PK
+        uuid order_id FK
+        uuid user_id FK "opcional"
+        enum previous_status "opcional"
+        enum new_status
+        text note "opcional"
+        timestamptz changed_at
+    }
+    order_items {
+        uuid id PK
+        uuid order_id FK
+        varchar dish_name
+        integer quantity
+        varchar note "opcional, por línea"
+        enum status
+    }
     orders ||--|| reviews : "tiene, como máximo una"
 
     users ||--o| loyalty_accounts : "tiene saldo"
@@ -121,6 +143,7 @@ erDiagram
         timestamptz updated_at
     }
     orders {
+        uuid updated_by FK "opcional, DELETE SET NULL"
         uuid id PK
         uuid branch_id FK
         uuid customer_id FK "nullable"
