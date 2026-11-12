@@ -123,6 +123,33 @@ describe.sequential('BE-06: endpoint y persistencia Prisma reales', () => {
       .send({ orderId, cardToken });
   }
 
+  it.each(['DINE_IN', 'DELIVERY'])(
+    'rechaza pedido propio %s sin registrar pagos ni comprobantes',
+    async (type) => {
+      await client!.query(
+        'UPDATE orders SET type=$1, payment_mode=NULL WHERE id=$2',
+        [type, orderId],
+      );
+      await post().expect(409);
+      const payments = await client!.query(
+        'SELECT count(*)::int AS count FROM payments WHERE order_id=$1',
+        [orderId],
+      );
+      expect(payments.rows[0].count).toBe(0);
+    },
+  );
+  it('rechaza pedido cancelado sin registrar intentos', async () => {
+    await client!.query("UPDATE orders SET status='CANCELED' WHERE id=$1", [
+      orderId,
+    ]);
+    await post().expect(409);
+    const payments = await client!.query(
+      'SELECT count(*)::int AS count FROM payments WHERE order_id=$1',
+      [orderId],
+    );
+    expect(payments.rows[0].count).toBe(0);
+  });
+
   it('conserva rechazo y permite aprobar con un único comprobante no fiscal', async () => {
     const rejected = await post('test_0002').expect(201);
     expect(rejected.body).toMatchObject({
@@ -130,6 +157,16 @@ describe.sequential('BE-06: endpoint y persistencia Prisma reales', () => {
       receipt: null,
       last4: '0002',
     });
+    const unpaid = await client!.query(
+      'SELECT status FROM orders WHERE id=$1',
+      [orderId],
+    );
+    expect(unpaid.rows[0].status).toBe('PENDING');
+    const receipts = await client!.query(
+      'SELECT count(*)::int AS count FROM simple_receipts r JOIN payments p ON p.id=r.payment_id WHERE p.order_id=$1',
+      [orderId],
+    );
+    expect(receipts.rows[0].count).toBe(0);
     const approved = await post().expect(201);
     expect(approved.body).toMatchObject({
       status: 'APROBADO',
@@ -153,10 +190,19 @@ describe.sequential('BE-06: endpoint y persistencia Prisma reales', () => {
       [orderId],
     );
     expect(count.rows[0].count).toBe(1);
+    const payments = await client!.query(
+      'SELECT count(*)::int AS count FROM payments WHERE order_id=$1',
+      [orderId],
+    );
+    expect(payments.rows[0].count).toBe(1);
   });
   it('dos pagos concurrentes producen solo un aprobado', async () => {
     const results = await Promise.all([post(), post()]);
-    expect(results.map((result) => result.status).sort()).toEqual([201, 409]);
+    expect(
+      results
+        .map((result) => result.status)
+        .sort((left, right) => left - right),
+    ).toEqual([201, 409]);
     const count = await client!.query(
       "SELECT count(*)::int AS count FROM payments WHERE order_id=$1 AND status='PAID'",
       [orderId],

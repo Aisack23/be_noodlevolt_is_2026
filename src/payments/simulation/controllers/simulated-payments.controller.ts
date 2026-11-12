@@ -43,7 +43,7 @@ export class SimulatedPaymentsController {
   @ApiNotFoundResponse({ description: 'El pedido no existe.' })
   @ApiConflictResponse({
     description:
-      'El pedido ya está pagado, está cancelado o no tiene un importe válido.',
+      'El pedido no es para llevar, ya está pagado, está cancelado o no tiene un importe válido.',
   })
   simulate(
     @CurrentUser() user: User,

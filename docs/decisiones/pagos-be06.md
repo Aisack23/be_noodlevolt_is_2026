@@ -22,6 +22,18 @@ consultar status y no interpretar 201 como aprobación.
 409: pedido cancelado, ya aprobado, sin líneas o sin importe positivo. 400: DTO
 inválido. No se cambia el estado de preparación del pedido al pagar.
 
+## Tipos y estados admisibles
+
+Se exige Order.type=TAKEOUT tanto en la prevalidación como bajo FOR UPDATE al
+registrar el resultado. DINE_IN y DELIVERY responden 409 sin crear intentos.
+La titularidad se comprueba primero para no revelar datos de pedidos ajenos.
+
+Pendiente de pago significa que no existe Payment PAID. No se restringe el
+estado de preparación exclusivamente a PENDING: las HU permiten que cocina
+avance antes de pagar. Se admite pagar un TAKEOUT propio sin PAID y no cancelado,
+aunque esté en preparación, listo o entregado. Se mantiene el rechazo de CANCELED.
+Esta regla no convierte el pago en una transición de preparación.
+
 ## Flujo y persistencia
 
 Primero se verifica titularidad y ausencia de pago aprobado, luego se ejecuta la
@@ -66,17 +78,19 @@ revertir elimina los comprobantes simples: debe planificarse preservación de
 esos datos antes de usar down.sql sobre datos reales. No se borran intentos
 para forzar una reversión.
 
-## Validación local
+## Validación final de la corrección
 
-- 18 pruebas de servicio/HTTP con JWT real, persistencia simulada y gateway real
-  para la demora: aprobadas.
-- 5 pruebas de restricciones en PostgreSQL real, en base temporal: aprobadas.
-- Aplicación, reversión y reaplicación de migraciones: aprobadas.
-- Lint sin tipos de los archivos nuevos: sin incidencias.
-- Compilación: fallida porque falta Prisma Client generado.
-- Endpoint completo con Prisma: la suite falla al iniciar; 5 casos omitidos.
-- No se ha configurado ni verificado ejecución en CI.
+- npx tsc --noEmit: aprobado, incluido el código de pruebas.
+- npm run build: aprobado.
+- npm run lint: aprobado, sin advertencias tras retirar una importación sin uso.
+- npm test: 55/55 pruebas aprobadas, siete suites.
+- E2E global de esta rama: 157/157 pruebas aprobadas, doce suites; ninguna omitida.
+- Esas E2E incluyen aprobación, rechazo, repetición, concurrencia, precio histórico,
+  pedidos ajenos/cancelados y rechazo de DINE_IN/DELIVERY, además del esquema SQL.
+- Cuatro pruebas nuevas del repositorio verifican el tipo en prevalidación y su
+  revalidación dentro de la transacción antes de registrar un pago.
 
-No se puede afirmar que el endpoint completo haya pasado sus pruebas hasta
-habilitar binaries.prisma.sh, regenerar el cliente, aplicar migraciones y ejecutar
-la suite real. El esquema y los tests aislados no sustituyen esa comprobación.
+El cliente Prisma se generó con los generadores oficiales locales 7.10.0 y WASM,
+sin desactivar TLS ni checksums. E2E corrió sobre PostgreSQL temporal con todas
+las migraciones de la rama, sin afectar datos de desarrollo. La validación
+corresponde a feat/BE-06-payments, no a otras ramas ni a frontend/CI.

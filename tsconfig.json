@@ -61,6 +61,8 @@
       "@Branches/*": ["./src/branches/*/index.ts"],
       "@Auth": ["./src/auth/index.ts"],
       "@Auth/*": ["./src/auth/*/index.ts"],
+      "@Reports": ["./src/reports/index.ts"],
+      "@Reports/*": ["./src/reports/*/index.ts"],
       "@Users": ["./src/users/index.ts"],
       "@Users/*": ["./src/users/*/index.ts"],
       "@Health": ["./src/health/index.ts"],
