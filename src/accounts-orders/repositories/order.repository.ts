@@ -1,5 +1,9 @@
-import { NotificationsService } from '../../notifications/services/notifications.service.js';
-
+import { OrderReadyNotifier } from '@AccountsOrders/ports';
+import {
+  KitchenOrderIntegrityError,
+  KitchenOrderNotFoundError,
+  KitchenOrderTransitionError,
+} from '@AccountsOrders/errors';
 import { Inject, Injectable } from '@nestjs/common';
 import {
   Order,
@@ -73,7 +77,8 @@ export interface KitchenOrderRow {
 export class OrderRepository {
   constructor(
     @Inject(PrismaService) private readonly prisma: PrismaService,
-    @Inject(NotificationsService) private readonly notifications: NotificationsService,
+    @Inject(OrderReadyNotifier)
+    private readonly orderReadyNotifier: OrderReadyNotifier,
   ) {}
 
   create(data: CreateOrderData): Promise<Order> {
@@ -156,10 +161,7 @@ export class OrderRepository {
     });
   }
 
-  findByStatus(
-    branchId: string,
-    status: OrderStatus,
-  ): Promise<Order[]> {
+  findByStatus(branchId: string, status: OrderStatus): Promise<Order[]> {
     return this.prisma.order.findMany({
       where: { branchId, status },
       orderBy: { createdAt: 'desc' },
@@ -183,20 +185,14 @@ export class OrderRepository {
     });
   }
 
-  update(
-    id: string,
-    data: UpdateOrderData,
-  ): Promise<Order> {
+  update(id: string, data: UpdateOrderData): Promise<Order> {
     return this.prisma.order.update({
       where: { id },
       data,
     });
   }
 
-  updateStatus(
-    id: string,
-    status: OrderStatus,
-  ): Promise<Order> {
+  updateStatus(id: string, status: OrderStatus): Promise<Order> {
     return this.prisma.order.update({
       where: { id },
       data: { status },
@@ -208,75 +204,104 @@ export class OrderRepository {
       where: {
         branchId,
         status: {
-          in: [
-            OrderStatus.PENDING,
-            OrderStatus.IN_PREPARATION,
-            OrderStatus.READY,
-          ],
+          in: [OrderStatus.PENDING, OrderStatus.IN_PREPARATION],
         },
       },
-      orderBy: { createdAt: 'asc' },
+      orderBy: [{ createdAt: 'asc' }, { id: 'asc' }],
       select: kitchenOrderSelect,
     });
   }
 
-  /**
-   * El pedido, sus líneas y la auditoría deben representar la misma transición.
-   * El bloqueo de fila evita que dos pantallas de cocina validen el mismo estado
-   * anterior y dejen un historial contradictorio.
-   */
+  async findReadyQueue(branchId: string): Promise<KitchenOrderRow[]> {
+    const orders = await this.prisma.order.findMany({
+      where: { branchId, status: OrderStatus.READY },
+      select: {
+        ...kitchenOrderSelect,
+        statusHistory: {
+          where: { newStatus: OrderStatus.READY },
+          orderBy: { changedAt: 'desc' },
+          take: 1,
+          select: { changedAt: true },
+        },
+      },
+    });
+    // Pedidos históricos pueden no tener una entrada de llegada a LISTO.
+    return orders.sort(
+      (a, b) =>
+        (a.statusHistory[0]?.changedAt ?? a.createdAt).getTime() -
+          (b.statusHistory[0]?.changedAt ?? b.createdAt).getTime() ||
+        a.id.localeCompare(b.id),
+    );
+  }
+
   async transitionKitchenStatus(
     branchId: string,
     orderId: string,
     userId: string,
-    nextStatus: 'IN_PREPARATION' | 'READY',
-  ): Promise<KitchenOrderRow | null> {
-    return this.prisma.$transaction(async (tx) => {
-      const locked = await tx.$queryRaw<{ id: string; status: OrderStatus }[]>(
-        Prisma.sql`SELECT id, status FROM orders WHERE id=${orderId}::uuid AND branch_id=${branchId}::uuid FOR UPDATE`,
-      );
-      if (!locked[0]) return null;
-
-      const currentStatus = locked[0].status;
-      if (currentStatus === nextStatus) {
-        if (nextStatus === 'READY')
-          await this.notifications.notifyOrderReady(orderId, tx);
+    nextStatus: 'IN_PREPARATION' | 'READY' | 'DELIVERED',
+  ): Promise<KitchenOrderRow> {
+    try {
+      return await this.prisma.$transaction(async (tx) => {
+        // Bloquear antes de validar impide dos historiales para un mismo avance.
+        const locked = await tx.$queryRaw<
+          { id: string; status: OrderStatus }[]
+        >(
+          Prisma.sql`SELECT id, status FROM orders WHERE id=${orderId}::uuid AND branch_id=${branchId}::uuid FOR UPDATE`,
+        );
+        if (!locked[0]) throw new KitchenOrderNotFoundError();
+        const currentStatus = locked[0].status;
+        if (currentStatus === nextStatus) {
+          return tx.order.findUniqueOrThrow({
+            where: { id: orderId },
+            select: kitchenOrderSelect,
+          });
+        }
+        if (!isKitchenTransition(currentStatus, nextStatus)) {
+          throw new KitchenOrderTransitionError(currentStatus, nextStatus);
+        }
+        await tx.order.update({
+          where: { id: orderId },
+          data: { status: nextStatus, updatedBy: userId },
+        });
+        await tx.orderItem.updateMany({
+          where: {
+            orderId,
+            status: {
+              in: [
+                OrderItemStatus.PENDING,
+                OrderItemStatus.IN_PREPARATION,
+                ...(nextStatus === OrderStatus.DELIVERED
+                  ? [OrderItemStatus.READY]
+                  : []),
+              ],
+            },
+          },
+          data: { status: nextStatus },
+        });
+        await tx.orderStatusHistory.create({
+          data: {
+            orderId,
+            userId,
+            previousStatus: currentStatus,
+            newStatus: nextStatus,
+          },
+        });
+        if (nextStatus === OrderStatus.READY) {
+          await this.orderReadyNotifier.notifyOrderReady(orderId, tx);
+        }
         return tx.order.findUniqueOrThrow({
           where: { id: orderId },
           select: kitchenOrderSelect,
         });
+      });
+    } catch (error) {
+      if (error instanceof Prisma.PrismaClientKnownRequestError) {
+        if (error.code === 'P2025') throw new KitchenOrderNotFoundError();
+        if (error.code === 'P2002' || error.code === 'P2003')
+          throw new KitchenOrderIntegrityError();
       }
-      if (!isKitchenTransition(currentStatus, nextStatus)) {
-        throw new KitchenOrderTransitionError(currentStatus, nextStatus);
-      }
-
-      await tx.order.update({
-        where: { id: orderId },
-        data: { status: nextStatus },
-      });
-      await tx.orderItem.updateMany({
-        where: {
-          orderId,
-          status: {
-            in: [OrderItemStatus.PENDING, OrderItemStatus.IN_PREPARATION],
-          },
-        },
-        data: { status: nextStatus },
-      });
-      await tx.orderStatusHistory.create({
-        data: {
-          orderId,
-          userId,
-          previousStatus: currentStatus,
-          newStatus: nextStatus,
-        },
-      });
-      if (nextStatus === 'READY') await this.notifications.notifyOrderReady(orderId, tx);
-      return tx.order.findUniqueOrThrow({
-        where: { id: orderId },
-        select: kitchenOrderSelect,
-      });
-    });
+      throw error;
+    }
   }
 }
 
@@ -299,23 +324,13 @@ const kitchenOrderSelect = {
   },
 } as const satisfies Prisma.OrderSelect;
 
-export class KitchenOrderTransitionError extends Error {
-  constructor(
-    readonly current: OrderStatus,
-    readonly next: OrderStatus,
-  ) {
-    super(
-      `No se puede cambiar un pedido de ${current} a ${next} desde cocina.`,
-    );
-  }
-}
-
 function isKitchenTransition(
   current: OrderStatus,
-  next: 'IN_PREPARATION' | 'READY',
+  next: 'IN_PREPARATION' | 'READY' | 'DELIVERED',
 ): boolean {
   return (
     (current === OrderStatus.PENDING && next === OrderStatus.IN_PREPARATION) ||
-    (current === OrderStatus.IN_PREPARATION && next === OrderStatus.READY)
+    (current === OrderStatus.IN_PREPARATION && next === OrderStatus.READY) ||
+    (current === OrderStatus.READY && next === OrderStatus.DELIVERED)
   );
 }

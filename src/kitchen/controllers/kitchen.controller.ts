@@ -10,6 +10,7 @@ import {
 } from '@nestjs/common';
 import {
   ApiBadRequestResponse,
+  ApiBody,
   ApiBearerAuth,
   ApiConflictResponse,
   ApiForbiddenResponse,
@@ -45,7 +46,7 @@ export class KitchenController {
   @ApiOperation({
     summary: 'Lista la cola persistida de la sucursal del personal de cocina.',
     description:
-      'Incluye pedidos PENDING, IN_PREPARATION y READY con el estado persistido de cada línea.',
+      'Incluye solo PENDING e IN_PREPARATION de la sucursal del cocinero, por createdAt ascendente, con notas por línea.',
   })
   @ApiOkResponse({ type: KitchenOrderResponseDto, isArray: true })
   @ApiUnauthorizedResponse({ description: 'Falta sesión válida.' })
@@ -56,12 +57,51 @@ export class KitchenController {
     return this.kitchen.list(user);
   }
 
+  @Get('ready')
+  @ApiOperation({
+    summary: 'Lista pedidos listos para el mesero de la sucursal.',
+    description:
+      'Solo READY de su sucursal. Orden ascendente por la última llegada a READY en el historial; si no existe, por createdAt. Incluye número, platillos, cantidades y notas. Los entregados dejan de aparecer.',
+  })
+  @ApiOkResponse({ type: KitchenOrderResponseDto, isArray: true })
+  @ApiUnauthorizedResponse({ description: 'Falta sesión válida.' })
+  @ApiForbiddenResponse({
+    description: 'Se requiere rol WAITER asignado a una sucursal.',
+  })
+  listReady(@CurrentUser() user: User): Promise<KitchenOrderResponseDto[]> {
+    return this.kitchen.listReady(user);
+  }
+
+  @Patch(':id/deliver')
+  @ApiParam({ name: 'id', format: 'uuid' })
+  @ApiOperation({
+    summary: 'Confirma la entrega de un pedido listo.',
+    description:
+      'Solo WAITER de la sucursal puede avanzar READY a DELIVERED. No requiere body. Repetir DELIVERED devuelve 200 con el pedido sin cambios: conserva updatedBy y updatedAt, sin nuevo historial ni aviso.',
+  })
+  @ApiOkResponse({ type: KitchenOrderResponseDto })
+  @ApiBadRequestResponse({ description: 'UUID inválido.' })
+  @ApiUnauthorizedResponse({ description: 'Falta sesión válida.' })
+  @ApiForbiddenResponse({
+    description: 'Se requiere rol WAITER asignado a una sucursal.',
+  })
+  @ApiNotFoundResponse({
+    description: 'El pedido no existe en la sucursal del usuario.',
+  })
+  @ApiConflictResponse({ description: 'El pedido no está READY ni DELIVERED.' })
+  deliver(
+    @CurrentUser() user: User,
+    @Param('id', orderIdPipe) orderId: string,
+  ): Promise<KitchenOrderResponseDto> {
+    return this.kitchen.deliver(user, orderId);
+  }
+
   @Patch(':id/status')
   @ApiParam({ name: 'id', format: 'uuid' })
   @ApiOperation({
     summary: 'Avanza un pedido de cocina.',
     description:
-      'Solo permite PENDING → IN_PREPARATION → READY. Actualiza pedido y líneas en una transacción y deja auditoría.',
+      'Solo permite PENDING → IN_PREPARATION → READY. Actualiza pedido y líneas en una transacción y deja auditoría. READY registra PEDIDO_LISTO para el cliente, si existe. Repetir el estado actual devuelve 200 con el pedido sin cambios: conserva updatedBy y updatedAt, sin nuevo historial ni aviso.',
   })
   @ApiOkResponse({ type: KitchenOrderResponseDto })
   @ApiBadRequestResponse({ description: 'UUID o estado de cocina inválido.' })
@@ -75,6 +115,7 @@ export class KitchenController {
   @ApiConflictResponse({
     description: 'La transición no corresponde al estado persistido.',
   })
+  @ApiBody({ type: UpdateKitchenOrderStatusDto })
   updateStatus(
     @CurrentUser() user: User,
     @Param('id', orderIdPipe) orderId: string,
