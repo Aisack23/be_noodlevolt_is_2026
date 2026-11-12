@@ -1,4 +1,5 @@
 import { ConflictException } from '@nestjs/common';
+import type { LoyaltyRepository } from '@CustomerFeatures/repositories';
 import { PrismaService } from '@Prisma/services';
 import { SimulatedPaymentsRepository } from './simulated-payments.repository.js';
 
@@ -20,8 +21,10 @@ describe('SimulatedPaymentsRepository: tipo de pedido y revalidación transaccio
       return callback(transaction);
     },
   };
+  const loyalty = { accruePayment: vi.fn() };
   const repository = new SimulatedPaymentsRepository(
     prisma as unknown as PrismaService,
+    loyalty as unknown as LoyaltyRepository,
   );
   beforeEach(() => {
     vi.resetAllMocks();

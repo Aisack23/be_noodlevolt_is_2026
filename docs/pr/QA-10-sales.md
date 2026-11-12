@@ -1,59 +1,79 @@
-# test(QA-10): preparar aceptación de reportes y documentar dependencia BE-10
+# test(QA-10): validar BE-10 integrado y registrar discrepancia de propinas
 
 ## Qué cambia
 
-- Se incorpora una suite de aceptación para GET /api/v1/reports/sales con 14 casos, JWT real y fixtures PostgreSQL.
-- Se preparan aprobados, rechazados, cancelados, dos sucursales y fronteras de días locales.
-- Se cubren total decimal, exclusión de propinas, aislamiento, gerente general, total cero y validación de fechas.
-- Se añade configuración explícita vitest.config.qa-sales.ts y matriz con cálculo manual en docs/qa/QA-10-sales.md.
-- No se modifica código de aplicación, schema, migraciones ni dependencias.
+- Se actualiza test/QA-10-sales con develop f197a9c, que ya incluye BE-10/DB-10 y GET /api/v1/reports/sales.
+- Se confirma el contrato from, to, branchId, total y paymentsCount en las aserciones.
+- Se mantienen los 14 casos y los valores esperados sin propinas indicados por QA-10 del PDF.
+- Se extiende el runner aislado para aceptar argumentos Vitest. Sin argumentos mantiene test:e2e; con --config permite QA-10 en PostgreSQL temporal migrado.
+- Se actualiza un fixture unitario de pagos con la nueva dependencia de lealtad del constructor, resolviendo TS2554 sin modificar aplicación.
+- Se reemplaza el informe anterior de ruta ausente por evidencias reales y la discrepancia QA10-001.
+- No se cambia lógica de negocio, schema, migraciones ni dependencias.
 
-## Dependencia bloqueante
+## Aclaración del commit anterior
 
-En develop b2581f3d463d7d5bcf2b1da62322c930bfdb4471 no existe el endpoint BE-10.
-Esta entrega corresponde a QA-10, no implementa BE-10 (asignado a Abraham en el
-PDF). La ausencia de la ruta se verificó en código y mediante solicitudes reales.
+209892b pertenece a test/QA-10-sales: era la preparación de QA basada en un
+develop anterior sin BE-10. No fue una implementación ni una fusión automática
+en develop. Ahora la rama QA integra la versión f197a9c y el endpoint sí existe.
 
-El PDF no define nombres de campos de respuesta. Se propone total como string
-con dos decimales para las aserciones; debe confirmarse con BE-10/Swagger. No se
-presenta esa propuesta como un contrato ya aprobado por el equipo.
+## Cómo repetirlo
 
-## Cómo probarlo
+Con Prisma Client generado y DATABASE_URL de PostgreSQL con permiso para crear bases temporales:
 
-Con Prisma Client generado, migraciones aplicadas y DATABASE_URL de una base
-PostgreSQL exclusiva para pruebas:
+```bash
+npx tsc --noEmit
+npm run build
+npm run lint
+npm test
+node scripts/test-e2e-isolated.mjs --config vitest.config.qa-sales.ts
+```
+
+Para una base exclusiva de pruebas ya migrada:
 
 ```bash
 npx vitest run --config vitest.config.qa-sales.ts
 ```
 
-La suite es explícita y no se incluye en los comandos predeterminados npm test
-ni test:e2e. Es obligatorio ejecutar este comando antes de aprobar QA-10.
+La suite es explícita; ejecutar solo npm test o test:e2e no valida QA-10.
 
-## Resultados
+## Resultados del 12 de noviembre de 2026
 
-- [x] Fixtures creados y limpiados correctamente en PostgreSQL temporal.
-- [x] Se ejecutaron los 14 casos, sin omitir ni deshabilitar pruebas.
-- [x] Lint con tipos y comprobación TypeScript acotada a la suite/config nuevas: sin incidencias.
+- [x] PostgreSQL disponible y Prisma Client regenerado; no hay errores por tipos ausentes.
+- [x] npx tsc --noEmit: aprobado.
 - [x] npm run build: aprobado.
-- [ ] npx tsc --noEmit global: falla por el cierre faltante previo en test/db-reservations-booking.e2e-spec.ts:258. No se modificó ese archivo.
-- [ ] **14/14 casos fallidos:** todos recibieron 404 porque BE-10 no está implementado. La suite NO pasó.
-- [ ] CA1, CA2 y CA3 no pueden darse por aceptados.
-- [ ] Integración FE-10 y CI no ejecutadas/verificadas.
+- [x] Unitarias globales: **234/234 aprobadas**, 20 suites.
+- [x] E2E existentes de BE-10/DB-10: **6/6 aprobadas**, 2 suites.
+- [x] QA-10 ejecuta los 14 casos sobre PostgreSQL temporal, sin omisiones ni 404 inesperados.
+- [ ] **QA-10 totalmente verde: 11 aprobadas y 3 fallidas.**
+- [x] Lint global: exit 0, con ocho advertencias previas; no se declara sin advertencias.
+- [x] git diff --check: sin incidencias.
+- [ ] E2E global, FE-10 y CI no verificados en esta revisión.
 
-No se cambiaron las expectativas para hacer pasar una API ausente. El total
-manual esperado es 30.30 para A, 7.70 para B y 38.00 consolidado; la primera venta
-incluye una propina de 5.00 que no se suma al reporte comercial.
+## Discrepancia pendiente QA10-001
 
-## Antes de aprobar
+BE-10 suma totalPaid. Un pago del fixture tiene subtotal=10.10, tip=5.00 y
+totalPaid=15.10. El PDF, en QA-10, pide comprobar la suma sin propinas.
 
-- [ ] Disponer de DB-10/BE-10 y acordar el contrato JSON.
-- [ ] Ajustar las aserciones al contrato acordado y obtener las 14 pruebas aprobadas.
-- [ ] Verificar FE-10 y guardar evidencias en Trello.
+| Consulta | Esperado sin propina | Recibido |
+|---|---|---|
+| Gerente A, sucursal implícita | 30.30 | 35.30 |
+| Gerente A, sucursal explícita | 30.30 | 35.30 |
+| Gerente general consolidado | 38.00 | 43.00 |
+
+Las tres fallas corresponden a la misma causa, no a tres errores independientes.
+Rango invertido, rol, aislamiento, zona de sucursal B, total cero y filtros
+inválidos pasan. Los conteos de pagos y la exclusión de rechazados/cancelados
+coinciden con los fixtures. No se cambiaron los esperados para ocultar propinas.
+
+**Antes de aprobar funcionalmente:** acordar el importe comercial con BE-10,
+corregir la implementación o documentar el cambio de requisito y repetir los
+14 casos. HU-10 no se declara completamente aceptada mientras exista esta
+contradicción y falte la revisión frontend.
 
 ## Integración
 
 - Rama origen: test/QA-10-sales.
 - Rama destino: develop.
-- Mantener como revisión de preparación de QA; no considerar la HU terminada ni el PR listo para aprobación funcional mientras falte BE-10.
+- Se conserva el historial de 209892b y se integra el develop actual.
 - El autor crea el PR y asigna reviewer.
+- Matriz, cálculo manual y evidencia: docs/qa/QA-10-sales.md.

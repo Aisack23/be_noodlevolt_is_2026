@@ -191,6 +191,12 @@ describe.sequential('QA-10: contrato de ventas pagadas', () => {
   }
   it('suma 10.10+20.20 y excluye rechazo, cancelado, propina y fechas fuera del día local', async () => {
     const response = await get().expect(200);
+    expect(response.body).toMatchObject({
+      from: '2030-01-10',
+      to: '2030-01-10',
+      branchId: branches[0],
+      paymentsCount: 2,
+    });
     expect(response.body.total).toBe('30.30');
   });
   it('permite indicar la sucursal propia sin alterar el total', async () => {
@@ -199,6 +205,12 @@ describe.sequential('QA-10: contrato de ventas pagadas', () => {
       to: '2030-01-10',
       branchId: branches[0],
     }).expect(200);
+    expect(response.body).toMatchObject({
+      from: '2030-01-10',
+      to: '2030-01-10',
+      branchId: branches[0],
+      paymentsCount: 2,
+    });
     expect(response.body.total).toBe('30.30');
   });
   it('devuelve cero si no hay pagos aprobados en el rango', async () => {
@@ -228,6 +240,7 @@ describe.sequential('QA-10: contrato de ventas pagadas', () => {
   });
   it('consolida todas las sucursales para el gerente general', async () => {
     const response = await get(2).expect(200);
+    expect(response.body).toMatchObject({ branchId: null, paymentsCount: 3 });
     expect(response.body.total).toBe('38.00');
   });
   it('usa la zona propia del gerente de la segunda sucursal', async () => {
