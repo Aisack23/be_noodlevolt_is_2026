@@ -45,8 +45,16 @@ export class NotificationsResponseDto {
   @ApiProperty({ type: [NotificationResponseDto] })
   items!: NotificationResponseDto[];
 
-  @ApiProperty()
+  @ApiProperty({
+    description: 'Cantidad total de avisos, leídos o no, en todo el buzón.',
+  })
   total!: number;
+
+  @ApiProperty({
+    description:
+      'Cantidad de avisos sin leer en todo el buzón, independiente de la página.',
+  })
+  unreadCount!: number;
 
   @ApiProperty()
   page!: number;

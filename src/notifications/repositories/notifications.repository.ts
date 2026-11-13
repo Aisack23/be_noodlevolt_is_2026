@@ -18,7 +18,7 @@ export class NotificationsRepository {
 
   async findOwn(userId: string, page: number, limit: number) {
     const where = { userId };
-    const [items, total] = await this.prisma.$transaction(
+    const [items, total, unreadCount] = await this.prisma.$transaction(
       [
         this.prisma.notification.findMany({
           where,
@@ -28,6 +28,7 @@ export class NotificationsRepository {
           orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
         }),
         this.prisma.notification.count({ where }),
+        this.prisma.notification.count({ where: { ...where, isRead: false } }),
       ],
       { isolationLevel: 'RepeatableRead' },
     );
@@ -37,9 +38,28 @@ export class NotificationsRepository {
         createdAt: item.createdAt.toISOString(),
       })),
       total,
+      unreadCount,
       page,
       limit,
     };
+  }
+
+  async markOwnAsRead(userId: string, id: string) {
+    return this.prisma.$transaction(async (tx) => {
+      const updated = await tx.notification.updateMany({
+        where: { id, userId },
+        data: { isRead: true },
+      });
+      if (updated.count === 0) return null;
+      const notification = await tx.notification.findFirstOrThrow({
+        where: { id, userId },
+        select: publicSelect,
+      });
+      return {
+        ...notification,
+        createdAt: notification.createdAt.toISOString(),
+      };
+    });
   }
 
   async createOrderReady(
