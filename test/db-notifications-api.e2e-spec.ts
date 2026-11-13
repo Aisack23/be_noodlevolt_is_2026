@@ -146,6 +146,74 @@ describe.sequential('HU-09: cocina y buzón con PostgreSQL real', () => {
     await patch('IN_PREPARATION', id).expect(200);
     await patch('READY', id).expect(200);
   }
+  function markRead(id: string, token = tokens[0]) {
+    return request(app!.getHttpServer())
+      .patch(`/api/v1/notifications/${id}/read`)
+      .set('Authorization', `Bearer ${token}`);
+  }
+  it('consultar no marca leído y PATCH baja unreadCount sin cambiar total', async () => {
+    await ready();
+    const first = await inbox().expect(200);
+    expect(first.body).toMatchObject({ total: 1, unreadCount: 1 });
+    const again = await inbox().expect(200);
+    expect(again.body.items[0].isRead).toBe(false);
+    const updated = await markRead(first.body.items[0].id).expect(200);
+    expect(updated.body.isRead).toBe(true);
+    const after = await inbox().expect(200);
+    expect(after.body).toMatchObject({ total: 1, unreadCount: 0 });
+    expect(after.body.items[0].isRead).toBe(true);
+  });
+  it('es idempotente bajo reintentos concurrentes y un replay READY no vuelve a no leído', async () => {
+    await ready();
+    const notice = (await inbox().expect(200)).body.items[0];
+    const results = await Promise.all([
+      markRead(notice.id),
+      markRead(notice.id),
+    ]);
+    expect(results.map((item) => item.status)).toEqual([200, 200]);
+    await patch('READY').expect(200);
+    const after = await inbox().expect(200);
+    expect(after.body).toMatchObject({ total: 1, unreadCount: 0 });
+    expect(after.body.items[0]).toMatchObject({ id: notice.id, isRead: true });
+  });
+  it('no permite leer avisos ajenos y no filtra si el ID existe', async () => {
+    await ready(orders[1]);
+    const other = (await inbox(1).expect(200)).body.items[0];
+    await markRead(other.id).expect(404);
+    await markRead(randomUUID()).expect(404);
+    expect((await inbox(1).expect(200)).body).toMatchObject({ unreadCount: 1 });
+    const persisted = await db!.query(
+      'SELECT is_read FROM notifications WHERE id=$1',
+      [other.id],
+    );
+    expect(persisted.rows[0].is_read).toBe(false);
+  });
+  it('el contador es del buzón completo, independiente de la página', async () => {
+    await ready();
+    const secondOrder = randomUUID();
+    await db!.query(
+      "INSERT INTO orders (id,branch_id,customer_id,type,payment_mode,status,operation_id,updated_at) VALUES ($1,$2,$3,'TAKEOUT','ONLINE','READY',gen_random_uuid(),now())",
+      [secondOrder, branches[0], clients[0]],
+    );
+    try {
+      await prisma.$transaction((tx) =>
+        notifications.notifyOrderReady(secondOrder, tx),
+      );
+      const page = await inbox(0, '?limit=1&page=1').expect(200);
+      expect(page.body.items).toHaveLength(1);
+      expect(page.body).toMatchObject({ total: 2, unreadCount: 2 });
+      await markRead(page.body.items[0].id).expect(200);
+      expect(
+        (await inbox(0, '?limit=1&page=2').expect(200)).body,
+      ).toMatchObject({ total: 2, unreadCount: 1 });
+    } finally {
+      await db!.query('DELETE FROM notifications WHERE order_id=$1', [
+        secondOrder,
+      ]);
+      await db!.query('DELETE FROM orders WHERE id=$1', [secondOrder]);
+    }
+  });
+
   it('muestra el aviso de READY con referencia al pedido solo a su propietario', async () => {
     await ready();
     await ready(orders[1]);
@@ -162,7 +230,13 @@ describe.sequential('HU-09: cocina y buzón con PostgreSQL real', () => {
     expect(other.body.items[0].orderId).toBe(orders[1]);
   });
   it('buzón vacío tiene items=[] y total=0', async () => {
-    await inbox().expect(200, { items: [], total: 0, page: 1, limit: 20 });
+    await inbox().expect(200, {
+      items: [],
+      total: 0,
+      unreadCount: 0,
+      page: 1,
+      limit: 20,
+    });
   });
   it('no notifica durante preparación ni al rechazar una transición', async () => {
     await patch('READY').expect(409);

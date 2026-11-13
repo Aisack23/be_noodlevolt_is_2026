@@ -1,4 +1,9 @@
-import { ForbiddenException, Inject, Injectable } from '@nestjs/common';
+import {
+  ForbiddenException,
+  NotFoundException,
+  Inject,
+  Injectable,
+} from '@nestjs/common';
 import type { Prisma } from '@PrismaClient';
 import { NotificationsRepository } from '../repositories/notifications.repository.js';
 
@@ -15,6 +20,17 @@ export class NotificationsService {
         'Solo los clientes pueden consultar sus notificaciones.',
       );
     return this.repository.findOwn(actor.id, page, limit);
+  }
+
+  async markOwnAsRead(actor: { id: string; role: string }, id: string) {
+    if (actor.role !== 'CLIENT')
+      throw new ForbiddenException(
+        'Solo los clientes pueden gestionar sus notificaciones.',
+      );
+    const notification = await this.repository.markOwnAsRead(actor.id, id);
+    if (!notification)
+      throw new NotFoundException('La notificación no existe.');
+    return notification;
   }
 
   async notifyOrderReady(orderId: string, tx: Prisma.TransactionClient) {

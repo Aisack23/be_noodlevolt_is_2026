@@ -5,8 +5,8 @@
 GET /api/v1/notifications/me requiere JWT válido y rol CLIENT. El propietario
 proviene del usuario verificado por el guard; no se aceptan userId, branchId ni
 otros filtros. Paginación: page=1 por defecto (1..1000000), limit=20 (1..100).
-Devuelve 200 con items, total, page y limit. Orden: createdAt descendente e ID
-descendente. Un buzón vacío devuelve items=[] y total=0, no 404. FE-09 puede
+Devuelve 200 con items, total, unreadCount, page y limit. Orden: createdAt descendente e ID
+descendente. Un buzón vacío devuelve items=[], total=0 y unreadCount=0, no 404. FE-09 puede
 mostrar «No tienes avisos todavía». Una página posterior sin filas no implica
 que total sea cero; total representa todo el buzón del propietario.
 
@@ -14,7 +14,26 @@ Cada aviso expone id, type, title, message, orderId, isRead y createdAt ISO UTC.
 PEDIDO_LISTO siempre tiene orderId; otros tipos heredados pueden tenerlo nulo.
 No se exponen userId, eventKey ni auditoría. El GET no modifica isRead. Una sesión
 inválida responde 401, personal autenticado 403 y paginación o query extra 400.
-La consulta se ejecuta con snapshot RepeatableRead para alinear items y total.
+La consulta se ejecuta con snapshot RepeatableRead para alinear items, total y unreadCount.
+
+## Lectura de avisos
+
+PATCH /api/v1/notifications/:id/read requiere JWT válido y rol CLIENT. Acepta
+una petición sin cuerpo o con {}. Devuelve 200 con el aviso actualizado y
+isRead=true. La actualización filtra por ID y usuario autenticado en la base;
+no acepta un destinatario enviado por el cliente. Un UUID inválido o cuerpo no
+vacío responde 400, sesión inválida 401 y personal autenticado 403. Un ID ajeno
+o inexistente recibe el mismo 404 para no revelar si existe.
+
+La operación es idempotente: repetirla, incluso concurrentemente, devuelve 200
+y conserva isRead=true. No elimina el aviso ni cambia su contenido. Un reintento
+del evento READY tampoco restablece el estado de lectura.
+
+unreadCount representa todos los avisos propios sin leer, independientemente de
+la página. total sigue contando todos los avisos propios, leídos y no leídos.
+FE-09 debe usar unreadCount para el contador y refrescar el buzón tras confirmar
+el PATCH; no debe descontar una unidad por cada reintento. El GET sigue sin
+modificar isRead.
 
 ## Generación interna
 
@@ -42,11 +61,10 @@ contenido ni estado de lectura durante un reintento, incluso concurrente.
 
 No se expone POST público de notificaciones: la interfaz interna cubre el evento
 y evita que un cliente fabrique avisos para otro. No se añaden correo, WebSocket,
-notificaciones push, pantalla frontend ni rutas para marcar leído; fuera del
-alcance de los tres criterios solicitados. Frontend debe consultar al abrir el
+notificaciones push ni pantalla frontend. Frontend debe consultar al abrir el
 buzón o repetir la consulta según su estrategia de actualización.
 
-## Validación
+## Validación inicial de BE-09
 
 - Tipos y build aprobados.
 - 214 pruebas unitarias globales aprobadas (17 suites), incluidas 18 nuevas BE-09.
@@ -65,3 +83,6 @@ buzón o repetir la consulta según su estrategia de actualización.
 
 No se añadieron migraciones: se requiere aplicar las de DB-09 ya incluidas en
 develop y regenerar Prisma Client antes de iniciar.
+
+La validación de la ampliación de lectura se registra en
+[BE-09-extra-endpoints](../pr/BE-09-extra-endpoints.md).
