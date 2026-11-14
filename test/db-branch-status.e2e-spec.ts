@@ -21,7 +21,7 @@ interface ConfigRow {
   updated_at: Date;
 }
 
-describe.sequential('BE-11: estado de sucursal contra PostgreSQL', () => {
+describe('BE-11: estado de sucursal contra PostgreSQL', () => {
   const branchA = randomUUID();
   const branchB = randomUUID();
   const inactiveBranch = randomUUID();

@@ -8,7 +8,7 @@ import { hash } from 'bcrypt';
 import { Client } from 'pg';
 import request from 'supertest';
 
-describe.sequential('BE-11: reseñas contra PostgreSQL', () => {
+describe('BE-11: reseñas contra PostgreSQL', () => {
   const password = 'Prueba1234!';
   const userIds: string[] = [];
   const branchIds: string[] = [];

@@ -7,7 +7,7 @@ const database = `be06_${randomUUID().replaceAll('-', '')}`;
 const branchId = randomUUID();
 const orderId = randomUUID();
 
-describe.sequential(
+describe(
   'BE-06: restricciones de pagos en PostgreSQL real, sin Prisma',
   () => {
     let admin: Client;

@@ -5,6 +5,8 @@ export default defineConfig({
   plugins: [tsconfigPaths()],
   test: {
     globals: true,
+    sequence: { concurrent: false },
+    setupFiles: ['./test/setup-test-env.ts'],
     root: './',
     include: ['**/*.e2e-spec.ts'],
     // Incluye las suites db-*, que corren los mismos seeds contra una sola base:

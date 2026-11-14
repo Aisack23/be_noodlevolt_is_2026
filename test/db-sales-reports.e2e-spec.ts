@@ -8,7 +8,7 @@ const PAID_INDEX = 'payments_paid_branch_id_created_at_idx';
 type OrderStatus = 'DELIVERED' | 'CANCELED';
 type PaymentStatus = 'PAID' | 'REJECTED';
 
-describe.sequential('DB-10: reportes de ventas por sucursal y fechas', () => {
+describe('DB-10: reportes de ventas por sucursal y fechas', () => {
   const db = databaseFixture();
 
   async function createOrder(

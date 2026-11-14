@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { databaseFixture } from './support/database.js';
 
-describe.sequential(
+describe(
   'DB-A.1.1: restricciones de usuarios, sucursales y mesas',
   () => {
     const db = databaseFixture();

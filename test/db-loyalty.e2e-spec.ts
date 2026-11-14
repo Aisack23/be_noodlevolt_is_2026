@@ -8,7 +8,7 @@ import {
 import { PrismaClient } from '../src/generated/prisma/client.js';
 import { databaseFixture } from './support/database.js';
 
-describe.sequential('DB-07: cuentas y movimientos de lealtad', () => {
+describe('DB-07: cuentas y movimientos de lealtad', () => {
   const db = databaseFixture();
 
   async function user() {
@@ -199,7 +199,7 @@ describe.sequential('DB-07: cuentas y movimientos de lealtad', () => {
   });
 });
 
-describe.sequential('DB-07: seed idempotente con la cuenta demo real', () => {
+describe('DB-07: seed idempotente con la cuenta demo real', () => {
   let prisma: PrismaClient;
   beforeAll(async () => {
     prisma = new PrismaClient({

@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { databaseFixture } from './support/database.js';
 
-describe.sequential(
+describe(
   'DB-1.1.1 y DB-2.1.1: catálogo y líneas por sucursal',
   () => {
     const db = databaseFixture();

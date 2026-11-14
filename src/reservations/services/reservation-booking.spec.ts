@@ -1,3 +1,4 @@
+import { ACCESS_TOKEN_POLICY } from '../../auth/types/access-token-policy.js';
 import { randomBytes } from 'node:crypto';
 import { Test } from '@nestjs/testing';
 import { ValidationPipe } from '@nestjs/common';
@@ -27,7 +28,14 @@ const payload = () => ({
 describe('BE-04: HTTP, sesión y validaciones', () => {
   const repository = { book: vi.fn() };
   const users = { findById: vi.fn() };
-  const jwt = new JwtService({ secret: randomBytes(32).toString('hex') });
+  const jwt = new JwtService({
+    secret: randomBytes(32).toString('hex'),
+    signOptions: {
+      expiresIn: '15m',
+      issuer: ACCESS_TOKEN_POLICY.issuer,
+      audience: ACCESS_TOKEN_POLICY.audience,
+    },
+  });
   let app: INestApplication;
   let token: string;
   beforeAll(async () => {

@@ -7,7 +7,7 @@ import request from 'supertest';
 
 const ids: string[] = [randomUUID(), randomUUID(), randomUUID()];
 
-describe.sequential(
+describe(
   'Consultas de sucursales contra AppModule y PostgreSQL',
   () => {
     let app: INestApplication | undefined;

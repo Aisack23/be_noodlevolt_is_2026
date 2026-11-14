@@ -6,7 +6,7 @@ import { Client } from 'pg';
 const MIGRATION = '20261108120000_loyalty_accounts';
 const root = new URL('../prisma/migrations/', import.meta.url);
 
-describe.sequential('DB-07: migración y reversión sin pérdida de datos', () => {
+describe('DB-07: migración y reversión sin pérdida de datos', () => {
   let client: Client;
   let namespace: string;
   let previous: string[];

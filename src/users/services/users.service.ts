@@ -1,4 +1,9 @@
-import { ConflictException, Injectable } from '@nestjs/common';
+import {
+  BadRequestException,
+  ConflictException,
+  Injectable,
+  Inject,
+} from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import bcrypt from 'bcrypt';
 import { UserRepository } from '@Users/repositories';
@@ -17,17 +22,27 @@ export class UsersService {
   private readonly saltRounds: number;
 
   constructor(
-    private readonly userRepository: UserRepository,
-    configService: ConfigService<EnvConfig, true>,
+    @Inject(UserRepository) private readonly userRepository: UserRepository,
+    @Inject(ConfigService) configService: ConfigService<EnvConfig, true>,
   ) {
     this.saltRounds = configService.get('BCRYPT_SALT_ROUNDS', { infer: true });
   }
 
-  async create({ email, password, name, lastName }: CreateUserDto): Promise<User> {
+  async create({
+    email,
+    password,
+    name,
+    lastName,
+  }: CreateUserDto): Promise<User> {
     const passwordHash = await this.hashPassword(password);
 
     try {
-      return await this.userRepository.create({ email, passwordHash, name, lastName });
+      return await this.userRepository.create({
+        email,
+        passwordHash,
+        name,
+        lastName,
+      });
     } catch (error) {
       // Traduce el error de dominio del repositorio a una excepción HTTP.
       if (error instanceof EmailAlreadyTakenError) {
@@ -46,6 +61,10 @@ export class UsersService {
   }
 
   hashPassword(password: string): Promise<string> {
+    if (Buffer.byteLength(password, 'utf8') > 72)
+      throw new BadRequestException(
+        'La contraseña no puede superar los 72 bytes UTF-8.',
+      );
     return bcrypt.hash(password, this.saltRounds);
   }
 
