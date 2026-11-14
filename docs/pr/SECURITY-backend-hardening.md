@@ -32,9 +32,9 @@ ubicación en la base, fragmento original, explicación y archivos TypeScript
 corregidos completos. Incluye matriz de los nueve criterios y distingue
 aislamiento de aplicación de RLS SQL e infraestructura no verificada.
 
-- [Informe y código corregido](../security/auditoria.md).
-- [Inventario por archivo/módulo](../security/inventario.md): 247 archivos de runtime y 33 declaraciones de rutas.
-- [Configuración y operación](../security/operacion.md).
+- [Informe y código corregido](https://github.com/Aisack23/be_noodlevolt_is_2026/blob/security/backend-hardening/docs/security/auditoria.md).
+- [Inventario por archivo/módulo](https://github.com/Aisack23/be_noodlevolt_is_2026/blob/security/backend-hardening/docs/security/inventario.md): 247 archivos de runtime y 33 declaraciones de rutas.
+- [Configuración y operación](https://github.com/Aisack23/be_noodlevolt_is_2026/blob/security/backend-hardening/docs/security/operacion.md).
 
 ## Preparación de despliegue
 
