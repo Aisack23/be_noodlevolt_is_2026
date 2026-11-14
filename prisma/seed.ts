@@ -3,6 +3,7 @@ import { PrismaPg } from '@prisma/adapter-pg';
 import { PrismaClient } from '../src/generated/prisma/client.js';
 import { seedBaseData } from './seeds/base-data.js';
 import { seedCatalogData } from './seeds/catalog-data.js';
+import { seedRewardProducts } from './seeds/reward-products-data.js';
 
 const adapter = new PrismaPg({ connectionString: process.env.DATABASE_URL });
 const prisma = new PrismaClient({ adapter });
@@ -10,7 +11,8 @@ const prisma = new PrismaClient({ adapter });
 async function main() {
   await seedBaseData(prisma);
   await seedCatalogData(prisma);
-  
+  await seedRewardProducts(prisma);
+
   console.log('Datos base listos.');
 }
 

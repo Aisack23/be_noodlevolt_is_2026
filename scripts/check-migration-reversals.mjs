@@ -225,6 +225,13 @@ async function checkOrderUpdatedByRefusal(down) {
 }
 
 async function checkRefusal(directory, down) {
+  if (
+    directory.endsWith('dining_rooms') ||
+    directory.endsWith('loyalty_rewards')
+  ) {
+    await checkExtraEndpointRefusal(directory, down);
+    return;
+  }
   if (directory.endsWith('order_updated_by')) {
     await checkOrderUpdatedByRefusal(down);
     return;
@@ -286,6 +293,155 @@ async function checkRefusal(directory, down) {
   if (branchColumn)
     await client.query('DELETE FROM categories WHERE id=$1', [category]);
   await client.query('DELETE FROM branches WHERE id=$1', [branch]);
+}
+
+async function checkExtraEndpointRefusal(directory, down) {
+  const id = randomUUID();
+  const branch = randomUUID();
+  const room = directory.endsWith('dining_rooms');
+  if (room) {
+    await client.query(
+      "INSERT INTO branches(id,name,address) VALUES($1::uuid,$1::text,'HU03')",
+      [branch],
+    );
+    await client.query(
+      "INSERT INTO dining_rooms(id,branch_id,name) VALUES($1,$2,'Terraza personalizada')",
+      [id, branch],
+    );
+  } else {
+    await client.query(
+      "INSERT INTO benefits(id,name,points_cost,reward_type,product_name) VALUES($1,'Personalizado',25,'PRODUCT','Wantanes')",
+      [id],
+    );
+  }
+  const before = await schema();
+  await assert.rejects(client.query(down), { code: 'P0001' });
+  await client.query('ROLLBACK');
+  assert.deepEqual(
+    await schema(),
+    before,
+    'El down rechazado debe conservar el esquema completo',
+  );
+  const table = room ? 'dining_rooms' : 'benefits';
+  const result = await client.query(
+    `DELETE FROM ${table} WHERE id=$1 RETURNING id`,
+    [id],
+  );
+  assert.equal(
+    result.rowCount,
+    1,
+    'La reversión rechazada debe conservar los datos personalizados',
+  );
+  if (room) await client.query('DELETE FROM branches WHERE id=$1', [branch]);
+  else {
+    const initial = '73000000-0000-4000-8000-000000000001';
+    const previous = (
+      await client.query('SELECT description FROM benefits WHERE id=$1', [
+        initial,
+      ])
+    ).rows[0].description;
+    await client.query(
+      "UPDATE benefits SET description='Personalizada' WHERE id=$1",
+      [initial],
+    );
+    await assert.rejects(client.query(down), { code: 'P0001' });
+    await client.query('ROLLBACK');
+    assert.equal(
+      (
+        await client.query('SELECT description FROM benefits WHERE id=$1', [
+          initial,
+        ])
+      ).rows[0].description,
+      'Personalizada',
+    );
+    await client.query('UPDATE benefits SET description=$1 WHERE id=$2', [
+      previous,
+      initial,
+    ]);
+  }
+}
+
+async function checkDiningRoomBackfill(up) {
+  const branches = [randomUUID(), randomUUID()];
+  const tables = [randomUUID(), randomUUID()];
+  for (const [i, branch] of branches.entries()) {
+    await client.query(
+      "INSERT INTO branches(id,name,address) VALUES($1::uuid,$1::text,'HU03')",
+      [branch],
+    );
+    await client.query(
+      "INSERT INTO tables(id,branch_id,number,capacity,status) VALUES($1,$2,'1',4,'OCCUPIED')",
+      [tables[i], branch],
+    );
+  }
+  await client.query(up);
+  const { rows } = await client.query(
+    `SELECT t.id,t.branch_id,t.status,r.branch_id AS room_branch,r.name
+    FROM tables t JOIN dining_rooms r ON r.id=t.room_id WHERE t.id=ANY($1::uuid[]) ORDER BY t.id`,
+    [tables],
+  );
+  assert.equal(rows.length, 2);
+  for (const row of rows) {
+    assert.equal(row.branch_id, row.room_branch);
+    assert.equal(row.status, 'OCCUPIED');
+    assert.equal(row.name, 'Salón principal');
+  }
+  const other = (
+    await client.query('SELECT id FROM dining_rooms WHERE branch_id=$1', [
+      branches[1],
+    ])
+  ).rows[0].id;
+  await assert.rejects(
+    client.query('UPDATE tables SET room_id=$1 WHERE id=$2', [
+      other,
+      tables[0],
+    ]),
+    { code: '23503' },
+  );
+  await client.query('DELETE FROM tables WHERE id=ANY($1::uuid[])', [tables]);
+  await client.query('DELETE FROM branches WHERE id=ANY($1::uuid[])', [
+    branches,
+  ]);
+}
+
+async function checkLegacyBenefitPreservation(up) {
+  const benefit = randomUUID();
+  const redemption = randomUUID();
+  const user = randomUUID();
+  await client.query(
+    "INSERT INTO users(id,name,email,password_hash,updated_at) VALUES($1,'HU03',$2,'unused',now())",
+    [user, `${user}@example.com`],
+  );
+  await client.query(
+    "INSERT INTO benefits(id,name,points_cost,discount) VALUES($1,'Beneficio anterior',25,2)",
+    [benefit],
+  );
+  await client.query(
+    'INSERT INTO redemptions(id,customer_id,benefit_id,code,points_cost) VALUES($1,$2,$3,$4,25)',
+    [redemption, user, benefit, randomUUID()],
+  );
+  await client.query(up);
+  const row = (
+    await client.query(
+      'SELECT reward_type,points_cost,status FROM redemptions WHERE id=$1',
+      [redemption],
+    )
+  ).rows[0];
+  assert.deepEqual(row, {
+    reward_type: null,
+    points_cost: 25,
+    status: 'PENDING',
+  });
+  const old = (
+    await client.query(
+      'SELECT reward_type,discount FROM benefits WHERE id=$1',
+      [benefit],
+    )
+  ).rows[0];
+  assert.deepEqual(old, { reward_type: null, discount: '2.00' });
+  await client.query('DELETE FROM redemptions WHERE id=$1', [redemption]);
+  await client.query('DELETE FROM benefits WHERE id=$1', [benefit]);
+  await client.query('DELETE FROM users WHERE id=$1', [user]);
 }
 
 async function notificationFixtures() {
@@ -444,7 +600,11 @@ try {
     if (directory.endsWith('internal_notifications')) {
       await checkNotificationMigrationRefusal(up);
     }
-    if (directory.endsWith(CATEGORY_COPY_MIGRATION)) {
+    if (directory.endsWith('dining_rooms')) {
+      await checkDiningRoomBackfill(up);
+    } else if (directory.endsWith('loyalty_rewards')) {
+      await checkLegacyBenefitPreservation(up);
+    } else if (directory.endsWith(CATEGORY_COPY_MIGRATION)) {
       await checkCategoryWithoutBranch(up);
       const fixtures = await categoryCopyFixtures();
       await client.query(up);

@@ -18,6 +18,14 @@ export class OrderLineResponseDto {
 }
 
 export class OrderResponseDto {
+  @ApiProperty({
+    example: '0.00',
+    description: 'Descuento de lealtad aplicado al total.',
+  })
+  discount!: string;
+
+  @ApiProperty({ type: String, nullable: true, format: 'uuid' })
+  loyaltyRedemptionId!: string | null;
   @ApiProperty({ enum: ['ONLINE', 'AT_COUNTER'], nullable: true })
   paymentMode!: 'ONLINE' | 'AT_COUNTER' | null;
 

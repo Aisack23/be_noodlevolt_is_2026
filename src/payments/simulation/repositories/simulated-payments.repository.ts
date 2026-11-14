@@ -50,6 +50,7 @@ export class SimulatedPaymentsRepository {
           select: {
             ...payableSelect,
             branchId: true,
+            loyaltyDiscount: true,
             items: { select: { unitPrice: true, quantity: true } },
           },
         });
@@ -62,10 +63,14 @@ export class SimulatedPaymentsRepository {
           throw new ConflictException('El pedido ya tiene un pago aprobado.');
         if (!order.items.length)
           throw new ConflictException('El pedido no tiene líneas para cobrar.');
-        const amount = order.items.reduce(
+        const subtotal = order.items.reduce(
           (sum, item) => sum.add(item.unitPrice.mul(item.quantity)),
           new Prisma.Decimal(0),
         );
+        const discount = order.loyaltyDiscount;
+        if (discount.lt(0) || discount.gte(subtotal))
+          throw new ConflictException('El descuento del pedido no es válido.');
+        const amount = subtotal.sub(discount);
         if (amount.lte(0))
           throw new ConflictException('El importe del pedido no es válido.');
         const receiptNumber = decision.approved ? `NV-${randomUUID()}` : null;
@@ -73,7 +78,8 @@ export class SimulatedPaymentsRepository {
           data: {
             orderId,
             branchId: order.branchId,
-            subtotal: amount,
+            subtotal,
+            discount,
             totalPaid: decision.approved ? amount : new Prisma.Decimal(0),
             status: decision.approved ? 'PAID' : 'REJECTED',
             last4: decision.last4,
@@ -90,7 +96,7 @@ export class SimulatedPaymentsRepository {
           id: payment.id,
           orderId,
           status: decision.approved ? 'APROBADO' : 'RECHAZADO',
-          amount: payment.subtotal.toFixed(2),
+          amount: amount.toFixed(2),
           last4: decision.last4,
           reason: payment.rejectionReason,
           receipt: payment.simpleReceipt

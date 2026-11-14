@@ -18,6 +18,8 @@ const orderSelect = {
   requestHash: true,
   status: true,
   total: true,
+  loyaltyDiscount: true,
+  loyaltyRedemptionId: true,
   paymentMode: true,
   pickupAt: true,
   items: {
@@ -139,6 +141,8 @@ function toResponse(order: StoredOrder): OrderResponseDto {
     operationKey: order.operationId,
     status: order.status,
     total: order.total.toFixed(2),
+    discount: order.loyaltyDiscount.toFixed(2),
+    loyaltyRedemptionId: order.loyaltyRedemptionId,
     paymentMode: order.paymentMode,
     pickupAt: order.pickupAt?.toISOString() ?? null,
     lines: order.items.map((item) => ({
