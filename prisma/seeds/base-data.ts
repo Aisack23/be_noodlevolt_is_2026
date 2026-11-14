@@ -59,14 +59,31 @@ export async function seedBaseData(prisma: PrismaClient) {
         create: data,
       });
       branches.set(branch.name, branch.id);
+      const room = await tx.diningRoom.upsert({
+        where: {
+          branchId_name: { branchId: branch.id, name: 'Salón principal' },
+        },
+        update: {},
+        create: { branchId: branch.id, name: 'Salón principal' },
+      });
       for (let number = 1; number <= 6; number++) {
-        await tx.diningTable.upsert({
+        const table = await tx.diningTable.upsert({
           where: {
             branchId_number: { branchId: branch.id, number: String(number) },
           },
           update: {},
-          create: { branchId: branch.id, number: String(number), capacity: 4 },
+          create: {
+            branchId: branch.id,
+            roomId: room.id,
+            number: String(number),
+            capacity: 4,
+          },
         });
+        if (table.roomId === null)
+          await tx.diningTable.update({
+            where: { id: table.id },
+            data: { roomId: room.id },
+          });
       }
     }
     for (const user of USERS) {

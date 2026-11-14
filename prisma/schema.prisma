@@ -152,6 +152,13 @@ enum RedemptionStatus {
   @@map("redemption_status")
 }
 
+enum RewardType {
+  PRODUCT
+  PERCENT_DISCOUNT
+
+  @@map("reward_type")
+}
+
 enum PointsMovementType {
   EARN
   REDEEM
@@ -183,6 +190,7 @@ model Branch {
   categories   Category[]
   dishes       Dish[]
   tables       DiningTable[]
+  rooms        DiningRoom[]
   accounts     Account[]
   orders       Order[]
   reservations Reservation[]
@@ -264,12 +272,29 @@ model RefreshToken {
   @@map("refresh_tokens")
 }
 
+model DiningRoom {
+  id       String @id @default(uuid()) @db.Uuid
+  branchId String @map("branch_id") @db.Uuid
+  name     String @db.VarChar(100)
+  isActive Boolean @default(true) @map("is_active")
+
+  branch Branch @relation(fields: [branchId], references: [id], onDelete: Cascade)
+  tables DiningTable[]
+
+  @@unique([branchId, name])
+  @@unique([id, branchId])
+  @@map("dining_rooms")
+}
+
 model DiningTable {
   id       String      @id @default(uuid()) @db.Uuid
   branchId String      @map("branch_id") @db.Uuid
   number   String      @db.VarChar(20)
   capacity Int
   status   TableStatus @default(AVAILABLE)
+  roomId   String? @map("room_id") @db.Uuid
+
+  room DiningRoom? @relation(fields: [roomId, branchId], references: [id, branchId], onDelete: Restrict)
 
   branch       Branch        @relation(fields: [branchId], references: [id], onDelete: Restrict)
   accounts     Account[]
@@ -277,6 +302,7 @@ model DiningTable {
 
   @@unique([branchId, number])
   @@index([branchId, status])
+  @@index([roomId])
   @@map("tables")
 }
 
@@ -361,6 +387,9 @@ model Order {
   deliveryInstructions String?   @map("delivery_instructions")
 
   total            Decimal?      @db.Decimal(14, 2)
+  loyaltyDiscount Decimal @default(0) @map("loyalty_discount") @db.Decimal(14, 2)
+  loyaltyRedemptionId String? @unique @map("loyalty_redemption_id") @db.Uuid
+  loyaltyRedemption Redemption? @relation(fields: [loyaltyRedemptionId], references: [id], onDelete: Restrict)
   requestHash      String?       @map("request_hash") @db.VarChar(64)
   updatedBy        String?       @map("updated_by") @db.Uuid
   status           OrderStatus   @default(PENDING)
@@ -659,6 +688,9 @@ model Benefit {
   pointsCost  Int     @map("points_cost")
   discount    Decimal @default(0) @db.Decimal(12, 2)
   isActive    Boolean @default(true) @map("is_active")
+  rewardType RewardType? @map("reward_type")
+  productName String? @map("product_name") @db.VarChar(150)
+  discountPercent Int? @map("discount_percent")
 
   redemptions Redemption[]
 
@@ -675,6 +707,12 @@ model Redemption {
   status     RedemptionStatus @default(PENDING)
   createdAt  DateTime         @default(now()) @map("created_at") @db.Timestamptz(6)
   usedAt     DateTime?        @map("used_at") @db.Timestamptz(6)
+  operationId String? @unique @map("operation_id") @db.Uuid
+  rewardName String? @map("reward_name") @db.VarChar(120)
+  rewardType RewardType? @map("reward_type")
+  productName String? @map("product_name") @db.VarChar(150)
+  discountPercent Int? @map("discount_percent")
+  order Order?
 
   customer       User            @relation(fields: [customerId], references: [id], onDelete: Restrict)
   benefit        Benefit         @relation(fields: [benefitId], references: [id], onDelete: Restrict)
