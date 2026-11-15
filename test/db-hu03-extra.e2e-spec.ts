@@ -30,7 +30,7 @@ const roles = [
 ];
 const staffIds = roles.map(() => randomUUID());
 
-describe.sequential(
+describe(
   'HU-03 extra: mesas, salones y canjes con PostgreSQL',
   () => {
     let app: INestApplication;

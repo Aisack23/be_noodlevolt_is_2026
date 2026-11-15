@@ -39,7 +39,7 @@ function summary(items: InventoryItemResponseDto[]) {
   );
 }
 
-describe.sequential('BE-05: consulta de inventario contra PostgreSQL', () => {
+describe('BE-05: consulta de inventario contra PostgreSQL', () => {
   const suffix = randomUUID();
   const branchA = { id: randomUUID(), name: `BE05 A ${suffix}` };
   const branchB = { id: randomUUID(), name: `BE05 B ${suffix}` };

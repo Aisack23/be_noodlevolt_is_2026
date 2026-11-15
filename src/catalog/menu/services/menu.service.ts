@@ -54,11 +54,8 @@ export class MenuService {
         branchId,
         menu.dishes.map((dish) => dish.id),
       );
-    } catch (error) {
-      this.logger.warn(
-        'No se pudo verificar la disponibilidad de insumos.',
-        error,
-      );
+    } catch {
+      this.logger.warn('No se pudo verificar la disponibilidad de insumos.');
       sufficient = new Set<string>();
     }
     const categories = new Map<string, MenuCategory>();

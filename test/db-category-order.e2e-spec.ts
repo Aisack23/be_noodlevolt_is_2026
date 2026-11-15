@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { databaseFixture } from './support/database.js';
 
-describe.sequential('Orden de presentación de categorías', () => {
+describe('Orden de presentación de categorías', () => {
   const db = databaseFixture();
 
   it('aplica el default 0 al omitir display_order', async () => {

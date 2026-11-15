@@ -1,3 +1,4 @@
+import { ACCESS_TOKEN_POLICY } from '../../auth/types/access-token-policy.js';
 import { randomBytes } from 'node:crypto';
 import { Test } from '@nestjs/testing';
 import { APP_GUARD, Reflector } from '@nestjs/core';
@@ -20,7 +21,14 @@ describe('BE-09: sesión, buzón e integración interna', () => {
     markOwnAsRead: vi.fn(),
   };
   const users = { findById: vi.fn() };
-  const jwt = new JwtService({ secret: randomBytes(32).toString('hex') });
+  const jwt = new JwtService({
+    secret: randomBytes(32).toString('hex'),
+    signOptions: {
+      expiresIn: '15m',
+      issuer: ACCESS_TOKEN_POLICY.issuer,
+      audience: ACCESS_TOKEN_POLICY.audience,
+    },
+  });
   let app: INestApplication;
   let service: NotificationsService;
   let token: string;

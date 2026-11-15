@@ -15,7 +15,7 @@ const orders = [randomUUID(), randomUUID()];
 const category = randomUUID();
 const dish = randomUUID();
 
-describe.sequential('HU-09: cocina y buzón con PostgreSQL real', () => {
+describe('HU-09: cocina y buzón con PostgreSQL real', () => {
   let app: INestApplication | undefined;
   let db: Client | undefined;
   let prisma: PrismaService;

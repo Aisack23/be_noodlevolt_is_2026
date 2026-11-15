@@ -12,7 +12,7 @@ const customerId = randomUUID();
 const dishId = randomUUID();
 const categoryId = randomUUID();
 
-describe.sequential('BE-06: endpoint y persistencia Prisma reales', () => {
+describe('BE-06: endpoint y persistencia Prisma reales', () => {
   let app: INestApplication | undefined;
   let client: Client | undefined;
   let token: string;

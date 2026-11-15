@@ -7,6 +7,7 @@ import { AuthService, TokenService } from '@Auth/services';
 import { RefreshTokenRepository } from '@Auth/repositories';
 import { JwtAuthGuard } from '@Auth/guards';
 import type { EnvConfig } from '@Config';
+import { ACCESS_TOKEN_POLICY } from './types/access-token-policy.js';
 
 @Module({
   imports: [
@@ -19,7 +20,10 @@ import type { EnvConfig } from '@Config';
         signOptions: {
           expiresIn: configService.get('JWT_EXPIRES_IN', { infer: true }),
           algorithm: 'HS256',
+          issuer: ACCESS_TOKEN_POLICY.issuer,
+          audience: ACCESS_TOKEN_POLICY.audience,
         },
+        verifyOptions: ACCESS_TOKEN_POLICY,
       }),
     }),
   ],

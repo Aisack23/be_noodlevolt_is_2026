@@ -10,7 +10,7 @@ const branches = [randomUUID(), randomUUID()];
 const tables = [randomUUID(), randomUUID(), randomUUID()];
 const userId = randomUUID();
 
-describe.sequential('HU-04: reservación con PostgreSQL real', () => {
+describe('HU-04: reservación con PostgreSQL real', () => {
   let app: INestApplication | undefined;
   let client: Client | undefined;
   let token: string;

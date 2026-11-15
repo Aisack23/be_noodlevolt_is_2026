@@ -209,7 +209,6 @@ describe('MenuService', () => {
       ).toBe(true);
       expect(warn).toHaveBeenCalledWith(
         'No se pudo verificar la disponibilidad de insumos.',
-        failure,
       );
     } finally {
       warn.mockRestore();

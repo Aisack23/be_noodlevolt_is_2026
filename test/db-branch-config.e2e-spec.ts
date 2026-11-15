@@ -6,7 +6,7 @@ import { seedBranchConfigData } from '../prisma/seeds/branch-config-data.js';
 import { PrismaClient } from '../src/generated/prisma/client.js';
 import { databaseFixture } from './support/database.js';
 
-describe.sequential('DB-11: estado operativo de sucursal', () => {
+describe('DB-11: estado operativo de sucursal', () => {
   const db = databaseFixture();
 
   function createConfig(branchId = db.branches[0]) {
@@ -134,7 +134,7 @@ describe.sequential('DB-11: estado operativo de sucursal', () => {
 
 // El seed confirma sus escrituras con su propia conexión, por lo que no puede
 // correr dentro de la transacción con rollback de databaseFixture.
-describe.sequential('DB-11: seed y auditoría del estado de sucursal', () => {
+describe('DB-11: seed y auditoría del estado de sucursal', () => {
   const SEED_TIMEOUT_MS = 30_000;
   const branchNames = BASE_BRANCHES.map(({ name }) => name);
   let client: Client;

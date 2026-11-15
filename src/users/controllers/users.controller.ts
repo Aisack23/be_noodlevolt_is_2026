@@ -1,4 +1,4 @@
-import { Body, Controller, Post } from '@nestjs/common';
+import { Body, Controller, Inject, Post } from '@nestjs/common';
 import {
   ApiConflictResponse,
   ApiCreatedResponse,
@@ -12,7 +12,9 @@ import { CreateUserDto, UserResponseDto } from '@Users/dto';
 @ApiTags('users')
 @Controller('users')
 export class UsersController {
-  constructor(private readonly usersService: UsersService) {}
+  constructor(
+    @Inject(UsersService) private readonly usersService: UsersService,
+  ) {}
 
   /**
    * Registro. Crear un usuario es crear un recurso, así que es un POST a la

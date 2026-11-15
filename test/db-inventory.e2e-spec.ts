@@ -6,7 +6,7 @@ import { seedInventoryData } from '../prisma/seeds/inventory-data.js';
 import { PrismaClient } from '../src/generated/prisma/client.js';
 import { databaseFixture } from './support/database.js';
 
-describe.sequential('DB-05: inventario de insumos', () => {
+describe('DB-05: inventario de insumos', () => {
   const db = databaseFixture();
 
   async function createIngredient(name: string = randomUUID()) {
@@ -200,7 +200,7 @@ describe.sequential('DB-05: inventario de insumos', () => {
 
 // El seed confirma sus escrituras con su propia conexión, por lo que no puede
 // correr dentro de la transacción con rollback de databaseFixture.
-describe.sequential('DB-05: seed de insumos', () => {
+describe('DB-05: seed de insumos', () => {
   const SEED_TIMEOUT_MS = 30_000;
   const branchNames = BASE_BRANCHES.map(({ name }) => name);
   let client: Client;

@@ -1,6 +1,6 @@
-import { Injectable } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import { PrismaService } from '@Prisma/services';
-import type { RefreshToken, User } from '@PrismaClient';
+import type { Prisma, RefreshToken, User } from '@PrismaClient';
 
 export interface CreateRefreshTokenData {
   tokenHash: string;
@@ -10,6 +10,9 @@ export interface CreateRefreshTokenData {
 
 /** Refresh token con el usuario dueño ya cargado. */
 export type RefreshTokenWithUser = RefreshToken & { user: User };
+export type RotationResult<T> =
+  | { kind: 'rotated'; user: User; value: T }
+  | { kind: 'invalid' | 'reused' | 'expired' | 'inactive' };
 
 /**
  * Único punto del módulo que habla con la tabla `refresh_tokens`.
@@ -19,10 +22,54 @@ export type RefreshTokenWithUser = RefreshToken & { user: User };
  */
 @Injectable()
 export class RefreshTokenRepository {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(@Inject(PrismaService) private readonly prisma: PrismaService) {}
 
-  create(data: CreateRefreshTokenData): Promise<RefreshToken> {
-    return this.prisma.refreshToken.create({ data });
+  create(
+    data: CreateRefreshTokenData,
+    tx?: Prisma.TransactionClient,
+  ): Promise<RefreshToken> {
+    return (tx ?? this.prisma).refreshToken.create({ data });
+  }
+
+  rotate<T>(
+    tokenHash: string,
+    issue: (user: User, tx: Prisma.TransactionClient) => Promise<T>,
+  ): Promise<RotationResult<T>> {
+    return this.prisma.$transaction(
+      async (tx): Promise<RotationResult<T>> => {
+        const owner = await tx.refreshToken.findUnique({
+          where: { tokenHash },
+          select: { userId: true },
+        });
+        if (!owner) return { kind: 'invalid' };
+        await tx.$queryRaw`SELECT id FROM users WHERE id=${owner.userId}::uuid FOR UPDATE`;
+        const stored = await tx.refreshToken.findUnique({
+          where: { tokenHash },
+          include: { user: true },
+        });
+        if (!stored) return { kind: 'invalid' };
+        if (stored.revokedAt !== null) {
+          await tx.refreshToken.updateMany({
+            where: { userId: stored.userId, revokedAt: null },
+            data: { revokedAt: new Date() },
+          });
+          return { kind: 'reused' };
+        }
+        if (stored.expiresAt.getTime() <= Date.now())
+          return { kind: 'expired' };
+        if (!stored.user.isActive) return { kind: 'inactive' };
+        await tx.refreshToken.update({
+          where: { id: stored.id },
+          data: { revokedAt: new Date() },
+        });
+        return {
+          kind: 'rotated',
+          user: stored.user,
+          value: await issue(stored.user, tx),
+        };
+      },
+      { timeout: 10000 },
+    );
   }
 
   /** Busca por hash trayendo el usuario, para validar la sesión en una sola query. */
@@ -60,12 +107,14 @@ export class RefreshTokenRepository {
 
   /** Revoca todas las sesiones activas de un usuario. Devuelve cuántas cerró. */
   revokeAllForUser(userId: string): Promise<number> {
-    return this.prisma.refreshToken
-      .updateMany({
+    return this.prisma.$transaction(async (tx) => {
+      await tx.$queryRaw`SELECT id FROM users WHERE id=${userId}::uuid FOR UPDATE`;
+      const result = await tx.refreshToken.updateMany({
         where: { userId, revokedAt: null },
         data: { revokedAt: new Date() },
-      })
-      .then((result) => result.count);
+      });
+      return result.count;
+    });
   }
 
   /** Utilidad de mantenimiento: limpia tokens vencidos. */

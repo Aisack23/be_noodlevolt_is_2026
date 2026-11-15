@@ -254,6 +254,15 @@ model User {
   @@map("users")
 }
 
+model ApiRateLimit {
+  key String @id @db.VarChar(160)
+  hits Int
+  expiresAt DateTime @map("expires_at") @db.Timestamptz(6)
+
+  @@index([expiresAt])
+  @@map("api_rate_limits")
+}
+
 model RefreshToken {
   id String @id @default(uuid()) @db.Uuid
 
@@ -269,6 +278,7 @@ model RefreshToken {
   createdAt DateTime  @default(now()) @map("created_at")
 
   @@index([userId])
+  @@index([expiresAt])
   @@map("refresh_tokens")
 }
 

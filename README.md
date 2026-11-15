@@ -2,6 +2,13 @@
 
 API REST construida con **NestJS 12**, **Prisma 7** y **PostgreSQL 18**, con autenticación por usuario y contraseña lista para usar.
 
+La configuración de seguridad y sus cambios de despliegue se describen en
+[docs/security/operacion.md](docs/security/operacion.md). Producción requiere
+secretos externos, HTTPS mediante un proxy confiable y PostgreSQL con
+`sslmode=verify-full`. Los usuarios demo solo se crean fuera de producción,
+con `DEMO_SEED_PASSWORD` proporcionada por el operador. El arranque necesita
+la migración de límites de solicitudes aplicada.
+
 ---
 
 ## Tabla de contenidos
@@ -36,7 +43,7 @@ API REST construida con **NestJS 12**, **Prisma 7** y **PostgreSQL 18**, con aut
 | [class-validator](https://github.com/typestack/class-validator) | 0.15 | Validación declarativa de los DTO de entrada |
 | [Swagger](https://docs.nestjs.com/openapi/introduction) | 12 | Documentación OpenAPI en `/api/docs` |
 | [tsc-alias](https://github.com/justkey007/tsc-alias) | 1 | Reescribe los path aliases del JS compilado (ver [Path aliases](#path-aliases)) |
-| [Vitest](https://vitest.dev) | 4 | Tests unitarios y e2e |
+| [Vitest](https://vitest.dev) | 5 | Tests unitarios y e2e |
 | [oxlint](https://oxc.rs) | 1 | Linter (con chequeos type-aware) |
 
 ### Dos detalles del stack que conviene saber
@@ -73,16 +80,16 @@ cp .env.example .env
 | `NODE_ENV` | `development` | Entorno de ejecución |
 | `PORT` | `3000` | Puerto HTTP de la API |
 | `POSTGRES_USER` | `postgres` | Usuario que crea el contenedor de Postgres |
-| `POSTGRES_PASSWORD` | `postgres` | Contraseña de ese usuario |
+| `POSTGRES_PASSWORD` | Obligatoria, sin valor predeterminado | Contraseña de ese usuario |
 | `POSTGRES_DB` | `si_be_boilerplate` | Base que se crea al inicializar |
 | `POSTGRES_PORT` | `5432` | Puerto publicado en el host |
 | `DATABASE_URL` | — | **Obligatoria.** Connection string de Prisma |
-| `JWT_SECRET` | — | **Obligatoria.** Mínimo 32 caracteres |
+| `JWT_SECRET` | — | **Obligatoria.** Mínimo 32 bytes aleatorios |
 | `JWT_EXPIRES_IN` | `15m` | Vigencia del access token |
 | `REFRESH_TOKEN_EXPIRES_IN_DAYS` | `7` | Vigencia del refresh token |
 | `BCRYPT_SALT_ROUNDS` | `12` | Cost factor de bcrypt |
 
-> La app **valida el entorno al arrancar** ([env.validation.ts](src/config/env.validation.ts)). Si falta `DATABASE_URL` o `JWT_SECRET`, o si el secreto es más corto que 32 caracteres, falla de inmediato con un mensaje claro en lugar de romperse más tarde.
+> La app **valida el entorno al arrancar** ([env.validation.ts](src/config/env.validation.ts)). Si falta `DATABASE_URL` o `JWT_SECRET`, o si el secreto es débil o tiene menos de 32 bytes, falla de inmediato con un mensaje claro en lugar de romperse más tarde.
 
 Generá un secreto real con:
 
@@ -105,7 +112,7 @@ cp .env.example .env
 docker compose up --build
 ```
 
-Listo: la API queda en `http://localhost:3000/api/v1` y la documentación en `http://localhost:3000/api/docs`.
+Listo: la API queda en `http://localhost:3000/api/v1`. Para habilitar la documentación local en `http://localhost:3000/api/docs`, configura `SWAGGER_ENABLED=true`.
 
 Para cargar el usuario de prueba:
 
@@ -241,7 +248,7 @@ npm run db:reset
 
 ### Seed
 
-Usuarios de prueba del Anexo A. Clave demo inicial: **`Demo1234!`**.
+Usuarios de prueba del Anexo A. Define `DEMO_SEED_PASSWORD` antes de ejecutar el seed local. No hay contraseña demo predeterminada y el seed rechaza producción.
 
 | Correo                          | Rol               | Sucursal     |
 | ------------------------------- | ----------------- | ------------ |
@@ -349,14 +356,14 @@ curl -X POST $BASE/users \
 }
 ```
 
-La contraseña debe tener entre 8 y 72 caracteres, con al menos una minúscula, una mayúscula y un número. Si el email ya está registrado, la respuesta es `409 Conflict`.
+La contraseña debe tener al menos 8 caracteres y como máximo 72 bytes UTF-8, con al menos una minúscula, una mayúscula y un número. Si el email ya está registrado, la respuesta es `409 Conflict`.
 
 **Login**
 
 ```bash
 curl -X POST $BASE/auth/login \
   -H 'Content-Type: application/json' \
-  -d '{"email":"demo@example.com","password":"Demo1234!"}'
+  -d '{"email":"demo@example.com","password":"<valor local de DEMO_SEED_PASSWORD>"}'
 ```
 
 ```jsonc

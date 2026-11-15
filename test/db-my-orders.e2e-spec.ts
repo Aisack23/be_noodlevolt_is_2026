@@ -7,7 +7,7 @@ import { JwtService } from '@nestjs/jwt';
 import { Client } from 'pg';
 import request from 'supertest';
 
-describe.sequential('BE-02: pedidos propios contra PostgreSQL', () => {
+describe('BE-02: pedidos propios contra PostgreSQL', () => {
   const branchIds: string[] = [];
   const userIds: string[] = [];
   const orderIds: string[] = [];

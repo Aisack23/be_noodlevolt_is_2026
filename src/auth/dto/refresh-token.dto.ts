@@ -1,12 +1,16 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsNotEmpty, IsString } from 'class-validator';
+import { IsString, Matches } from 'class-validator';
 
 export class RefreshTokenDto {
   @ApiProperty({
     description: 'Refresh token obtenido en el login.',
-    example: '9f2b1c...',
+    minLength: 64,
+    maxLength: 64,
   })
   @IsString()
-  @IsNotEmpty({ message: 'El refresh token es obligatorio.' })
+  @Matches(/^[0-9a-f]{64}$/, {
+    message:
+      'El refresh token debe contener exactamente 64 caracteres hexadecimales.',
+  })
   refreshToken!: string;
 }

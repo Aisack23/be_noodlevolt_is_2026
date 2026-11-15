@@ -31,7 +31,7 @@ interface QueueOrder {
   items: { name: string; quantity: number; note: string }[];
 }
 
-describe.sequential('BE-03: cocina y entrega contra PostgreSQL', () => {
+describe('BE-03: cocina y entrega contra PostgreSQL', () => {
   let app: INestApplication;
   let client: Client;
   let jwt: JwtService;

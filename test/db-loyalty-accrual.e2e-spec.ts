@@ -17,7 +17,7 @@ const categoryId = randomUUID();
 const dishId = randomUUID();
 const userIds: string[] = [];
 
-describe.sequential(
+describe(
   'BE-07: puntos, autorización e idempotencia en PostgreSQL',
   () => {
     let app: INestApplication;

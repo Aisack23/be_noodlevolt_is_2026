@@ -11,7 +11,7 @@ import type { MenuResponseDto } from '../src/catalog/menu/dto/index.js';
 import { INGREDIENT_AVAILABILITY_CHECKER } from '../src/catalog/menu/ports/index.js';
 import type { IngredientAvailabilityChecker } from '../src/catalog/menu/ports/index.js';
 
-describe.sequential('BE-1.2.1: menú público contra PostgreSQL', () => {
+describe('BE-1.2.1: menú público contra PostgreSQL', () => {
   const branches = [randomUUID(), randomUUID(), randomUUID()];
   const categories = [
     randomUUID(),

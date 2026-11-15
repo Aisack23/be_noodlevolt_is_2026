@@ -13,7 +13,7 @@ const dishId = randomUUID();
 const customerId = randomUUID();
 const otherCustomerId = randomUUID();
 
-describe.sequential('BE-02: creación transaccional de pedidos', () => {
+describe('BE-02: creación transaccional de pedidos', () => {
   let app: INestApplication | undefined;
   let client: Client | undefined;
   let token: string;

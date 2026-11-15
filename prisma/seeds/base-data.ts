@@ -1,7 +1,6 @@
 import bcrypt from 'bcrypt';
 import { PrismaClient, UserRole } from '../../src/generated/prisma/client.js';
 
-export const DEMO_PASSWORD = 'Demo1234!';
 export const BASE_BRANCHES = [
   { name: 'NoodleVolt Centro', address: 'San Salvador, Centro' },
   { name: 'NoodleVolt Santa Tecla', address: 'La Libertad, Santa Tecla' },
@@ -49,7 +48,20 @@ const USERS = [
 ];
 
 export async function seedBaseData(prisma: PrismaClient) {
-  const passwordHash = await bcrypt.hash(DEMO_PASSWORD, 12);
+  if (process.env.NODE_ENV === 'production')
+    throw new Error(
+      'Los datos y usuarios demo no se pueden crear en producción.',
+    );
+  const password = process.env.DEMO_SEED_PASSWORD;
+  if (
+    !password ||
+    Buffer.byteLength(password, 'utf8') > 72 ||
+    password.length < 12
+  )
+    throw new Error(
+      'Proporciona DEMO_SEED_PASSWORD de 12 caracteres como mínimo y 72 bytes como máximo para crear datos demo.',
+    );
+  const passwordHash = await bcrypt.hash(password, 12);
   await prisma.$transaction(async (tx) => {
     const branches = new Map<string, string>();
     for (const data of BASE_BRANCHES) {

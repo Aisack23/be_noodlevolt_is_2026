@@ -6,7 +6,7 @@ import { seedCatalogData } from '../prisma/seeds/catalog-data.js';
 import { PrismaClient } from '../src/generated/prisma/client.js';
 import { databaseFixture } from './support/database.js';
 
-describe.sequential('DB-01: categorías y platillos por sucursal', () => {
+describe('DB-01: categorías y platillos por sucursal', () => {
   const db = databaseFixture();
   let categories: string[];
 
@@ -163,7 +163,7 @@ describe.sequential('DB-01: categorías y platillos por sucursal', () => {
 
 // El seed confirma sus escrituras con su propia conexión, por lo que no puede
 // correr dentro de la transacción con rollback de databaseFixture.
-describe.sequential('DB-01: repetibilidad del seed de catálogo', () => {
+describe('DB-01: repetibilidad del seed de catálogo', () => {
   const SEED_TIMEOUT_MS = 30_000;
   const branchNames = BASE_BRANCHES.map(({ name }) => name);
   let client: Client;

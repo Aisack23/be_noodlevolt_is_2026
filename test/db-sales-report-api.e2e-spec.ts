@@ -11,7 +11,7 @@ import request from 'supertest';
 const PASSWORD = 'Prueba1234!';
 const REPORT_RANGE = { from: '2099-01-01', to: '2099-01-02' };
 
-describe.sequential('BE-10: endpoint /reports/sales consumible con JWT', () => {
+describe('BE-10: endpoint /reports/sales consumible con JWT', () => {
   const branchA = randomUUID();
   const branchB = randomUUID();
   const suffix = randomUUID();

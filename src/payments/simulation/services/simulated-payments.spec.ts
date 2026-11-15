@@ -1,3 +1,4 @@
+import { ACCESS_TOKEN_POLICY } from '../../../auth/types/access-token-policy.js';
 import { randomBytes } from 'node:crypto';
 import { Test } from '@nestjs/testing';
 import {
@@ -45,7 +46,14 @@ describe('BE-06: simulación con JWT real y persistencia simulada', () => {
   const repository = { requirePayable: vi.fn(), record: vi.fn() };
   const users = { findById: vi.fn() };
   const gateway = { authorize: vi.fn() };
-  const jwt = new JwtService({ secret: randomBytes(32).toString('hex') });
+  const jwt = new JwtService({
+    secret: randomBytes(32).toString('hex'),
+    signOptions: {
+      expiresIn: '15m',
+      issuer: ACCESS_TOKEN_POLICY.issuer,
+      audience: ACCESS_TOKEN_POLICY.audience,
+    },
+  });
   let app: INestApplication;
   let token: string;
 

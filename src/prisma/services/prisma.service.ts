@@ -35,7 +35,7 @@ export class PrismaService
       log:
         configService.get('NODE_ENV', { infer: true }) === 'development'
           ? ['warn', 'error']
-          : ['error'],
+          : [],
     });
   }
 

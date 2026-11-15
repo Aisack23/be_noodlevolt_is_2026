@@ -7,7 +7,7 @@ const REPORT_END = '2026-01-16T06:00:00.000Z';
 type OrderStatus = 'DELIVERED' | 'CANCELED';
 type PaymentStatus = 'PAID' | 'REJECTED';
 
-describe.sequential('DB-10: reportes de ventas por sucursal y fechas', () => {
+describe('DB-10: reportes de ventas por sucursal y fechas', () => {
   const db = databaseFixture();
 
   async function createOrder(
