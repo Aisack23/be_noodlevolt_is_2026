@@ -18,7 +18,7 @@ export interface CustomerOrderListRow {
   id: string;
   orderNumber: string | null;
   status: OrderStatus;
-  total: unknown;
+  total: Prisma.Decimal | null;
   createdAt: Date;
   branchId: string;
   branch: {
@@ -151,7 +151,7 @@ export class OrderRepository {
           },
         },
       },
-    }) as Promise<CustomerOrderListRow[]>;
+    });
   }
 
   findByWaiter(waiterId: string): Promise<Order[]> {

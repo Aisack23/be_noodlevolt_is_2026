@@ -133,15 +133,35 @@ describe.sequential('BE-02: creación transaccional de pedidos', () => {
       expect(pickup).toBeGreaterThanOrEqual(start + 20 * 60 * 1000);
       expect(pickup).toBeLessThanOrEqual(Date.now() + 20 * 60 * 1000);
       const stored = await client!.query(
-        'SELECT payment_mode,status FROM orders WHERE id=$1',
+        'SELECT payment_mode,status,pickup_at FROM orders WHERE id=$1',
         [response.body.id],
       );
       expect(stored.rows[0]).toEqual({
         payment_mode: paymentMode,
         status: 'PENDING',
+        pickup_at: new Date(response.body.pickupAt),
       });
     },
   );
+
+  it('omite modalidad como ONLINE y reintenta con ONLINE explícito sin crear otro pedido', async () => {
+    const payload = body();
+    const start = Date.now();
+    const first = await post(payload).expect(201);
+    expect(first.body.paymentMode).toBe('ONLINE');
+    const pickup = Date.parse(first.body.pickupAt);
+    expect(pickup).toBeGreaterThanOrEqual(start + 20 * 60 * 1000);
+    expect(pickup).toBeLessThanOrEqual(Date.now() + 20 * 60 * 1000);
+    const repeated = await post({ ...payload, paymentMode: 'ONLINE' }).expect(
+      200,
+    );
+    expect(repeated.body).toEqual(first.body);
+    const count = await client!.query(
+      'SELECT count(*)::int AS count FROM orders WHERE operation_id=$1',
+      [payload.operationKey],
+    );
+    expect(count.rows[0].count).toBe(1);
+  });
 
   it('precio esperado cambiado devuelve 409 con precio actual y no persiste el pedido', async () => {
     const payload = {
@@ -221,17 +241,20 @@ describe.sequential('BE-02: creación transaccional de pedidos', () => {
     });
   });
 
-  it('reintenta con 200 sin recalcular el pedido tras cambiar precio o cerrar sucursal', async () => {
-    const payload = body();
-    const first = await post(payload).expect(201);
-    await client!.query('UPDATE dishes SET price=9.00 WHERE id=$1', [dishId]);
-    await client!.query(
-      'UPDATE branch_configs SET is_open=false WHERE branch_id=$1',
-      [branchId],
-    );
-    const repeated = await post(payload).expect(200);
-    expect(repeated.body).toEqual(first.body);
-  });
+  it.each(['ONLINE', 'AT_COUNTER'] as const)(
+    'reintenta %s con 200 sin recalcular el pedido tras cambiar precio o cerrar sucursal',
+    async (paymentMode) => {
+      const payload = { ...body(), paymentMode };
+      const first = await post(payload).expect(201);
+      await client!.query('UPDATE dishes SET price=9.00 WHERE id=$1', [dishId]);
+      await client!.query(
+        'UPDATE branch_configs SET is_open=false WHERE branch_id=$1',
+        [branchId],
+      );
+      const repeated = await post(payload).expect(200);
+      expect(repeated.body).toEqual(first.body);
+    },
+  );
 
   it('rechaza cambios de contenido y reutilización de la clave por otro cliente', async () => {
     const payload = body();
