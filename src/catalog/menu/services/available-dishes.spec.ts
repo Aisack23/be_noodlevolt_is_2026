@@ -74,9 +74,11 @@ describe('BE-01: platillos disponibles', () => {
   });
 
   it('declara explícitamente la consulta pública para el guard global', () => {
-    expect(
-      new Reflector().get(IS_PUBLIC_KEY, DishesController.prototype.list),
-    ).toBe(true);
+    const handler = Object.getOwnPropertyDescriptor(
+      DishesController.prototype,
+      'list',
+    )?.value as typeof DishesController.prototype.list;
+    expect(new Reflector().get(IS_PUBLIC_KEY, handler)).toBe(true);
   });
 
   it('integra HTTP, validación, servicio y serialización decimal sin sesión', async () => {

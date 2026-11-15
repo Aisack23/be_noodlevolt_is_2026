@@ -3,7 +3,6 @@ import { databaseFixture } from './support/database.js';
 
 const REPORT_START = '2026-01-15T06:00:00.000Z';
 const REPORT_END = '2026-01-16T06:00:00.000Z';
-const PAID_INDEX = 'payments_paid_branch_id_created_at_idx';
 
 type OrderStatus = 'DELIVERED' | 'CANCELED';
 type PaymentStatus = 'PAID' | 'REJECTED';

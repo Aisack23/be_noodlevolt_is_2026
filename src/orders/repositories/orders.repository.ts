@@ -10,6 +10,8 @@ import type { CreateOrderDto } from '../dto/create-order.dto.js';
 import type { OrderResponseDto } from '../dto/order-response.dto.js';
 import { assertExpectedPrice } from '../services/order-pricing.js';
 
+const PICKUP_ESTIMATE_MS = 20 * 60 * 1000;
+
 const orderSelect = {
   id: true,
   branchId: true,
@@ -72,7 +74,8 @@ export class OrdersRepository {
             requestHash,
             total,
             type: 'TAKEOUT',
-            paymentMode: 'ONLINE',
+            paymentMode: input.paymentMode ?? 'ONLINE',
+            pickupAt: new Date(Date.now() + PICKUP_ESTIMATE_MS),
             status: 'PENDING',
             items: { create: lines },
           },

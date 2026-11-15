@@ -29,7 +29,10 @@ describe.sequential('BE-02: pedidos propios contra PostgreSQL', () => {
     return id;
   }
 
-  async function createUser(name: string, role: 'CLIENT' | 'WAITER' = 'CLIENT') {
+  async function createUser(
+    name: string,
+    role: 'CLIENT' | 'WAITER' = 'CLIENT',
+  ) {
     const id = randomUUID();
     userIds.push(id);
     let branchId: string | null = null;
@@ -75,7 +78,12 @@ describe.sequential('BE-02: pedidos propios contra PostgreSQL', () => {
     return id;
   }
 
-  async function createReview(orderId: string, customerId: string, branchId: string, rating = 5) {
+  async function createReview(
+    orderId: string,
+    customerId: string,
+    branchId: string,
+    rating = 5,
+  ) {
     await client.query(
       `INSERT INTO reviews (id, order_id, customer_id, branch_id, rating, created_at)
        VALUES ($1,$2,$3,$4,$5,CURRENT_TIMESTAMP)`,
@@ -89,11 +97,15 @@ describe.sequential('BE-02: pedidos propios contra PostgreSQL', () => {
 
   beforeAll(async () => {
     if (!process.env.DATABASE_URL)
-      throw new Error('Falta DATABASE_URL para ejecutar pruebas de PostgreSQL.');
+      throw new Error(
+        'Falta DATABASE_URL para ejecutar pruebas de PostgreSQL.',
+      );
     process.env.JWT_SECRET ??= randomBytes(32).toString('hex');
 
     const { AppModule } = await import('../src/app.module.js');
-    const module = await Test.createTestingModule({ imports: [AppModule] }).compile();
+    const module = await Test.createTestingModule({
+      imports: [AppModule],
+    }).compile();
     app = module.createNestApplication();
     app.setGlobalPrefix('api/v1');
     app.useGlobalPipes(
@@ -115,11 +127,23 @@ describe.sequential('BE-02: pedidos propios contra PostgreSQL', () => {
     if (client) {
       try {
         await client.query('BEGIN');
-        await client.query('DELETE FROM reviews WHERE order_id=ANY($1::uuid[])', [orderIds]);
-        await client.query('DELETE FROM orders WHERE id=ANY($1::uuid[])', [orderIds]);
-        await client.query('DELETE FROM users WHERE id=ANY($1::uuid[])', [userIds]);
-        await client.query('DELETE FROM branch_configs WHERE branch_id=ANY($1::uuid[])', [branchIds]);
-        await client.query('DELETE FROM branches WHERE id=ANY($1::uuid[])', [branchIds]);
+        await client.query(
+          'DELETE FROM reviews WHERE order_id=ANY($1::uuid[])',
+          [orderIds],
+        );
+        await client.query('DELETE FROM orders WHERE id=ANY($1::uuid[])', [
+          orderIds,
+        ]);
+        await client.query('DELETE FROM users WHERE id=ANY($1::uuid[])', [
+          userIds,
+        ]);
+        await client.query(
+          'DELETE FROM branch_configs WHERE branch_id=ANY($1::uuid[])',
+          [branchIds],
+        );
+        await client.query('DELETE FROM branches WHERE id=ANY($1::uuid[])', [
+          branchIds,
+        ]);
         await client.query('COMMIT');
       } finally {
         await client.end();
@@ -131,14 +155,24 @@ describe.sequential('BE-02: pedidos propios contra PostgreSQL', () => {
     const branchId = await createBranch('branch-my-orders');
     const customerA = await createUser('cliente-propio-a');
     const customerB = await createUser('cliente-propio-b');
-    const myOldOrder = await createOrder(branchId, customerA, 'PENDING', 'ORD-100');
-    const myRecentOrder = await createOrder(branchId, customerA, 'DELIVERED', 'ORD-200');
+    const myOldOrder = await createOrder(
+      branchId,
+      customerA,
+      'PENDING',
+      'ORD-100',
+    );
+    const myRecentOrder = await createOrder(
+      branchId,
+      customerA,
+      'DELIVERED',
+      'ORD-200',
+    );
     await createOrder(branchId, customerB, 'PENDING', 'ORD-300');
     await createReview(myRecentOrder, customerA, branchId, 4);
 
     const response = await request(app.getHttpServer())
       .get('/api/v1/orders/me')
-      .set('Authorization', `Bearer ${await tokenFor(customerA)}`)
+      .set('Authorization', `Bearer ${tokenFor(customerA)}`)
       .expect(200);
 
     expect(response.body).toHaveLength(2);
@@ -170,7 +204,7 @@ describe.sequential('BE-02: pedidos propios contra PostgreSQL', () => {
 
     const response = await request(app.getHttpServer())
       .get('/api/v1/orders/me')
-      .set('Authorization', `Bearer ${await tokenFor(customer)}`)
+      .set('Authorization', `Bearer ${tokenFor(customer)}`)
       .expect(200);
 
     expect(response.body).toEqual([]);
@@ -185,7 +219,7 @@ describe.sequential('BE-02: pedidos propios contra PostgreSQL', () => {
     const response = await request(app.getHttpServer())
       .get('/api/v1/orders/me')
       .query({ status: 'PENDING' })
-      .set('Authorization', `Bearer ${await tokenFor(customer)}`)
+      .set('Authorization', `Bearer ${tokenFor(customer)}`)
       .expect(200);
 
     expect(response.body).toHaveLength(1);
@@ -203,9 +237,32 @@ describe.sequential('BE-02: pedidos propios contra PostgreSQL', () => {
     await request(app.getHttpServer())
       .get('/api/v1/orders/me')
       .query({ status: 'INVALID' })
-      .set('Authorization', `Bearer ${await tokenFor(customer)}`)
+      .set('Authorization', `Bearer ${tokenFor(customer)}`)
       .expect(400);
   });
+
+  it.each([
+    { total: '0.01', expected: '0.01' },
+    { total: '999999999999.99', expected: '999999999999.99' },
+    { total: null, expected: '0.00' },
+  ])(
+    '200 conserva el importe decimal $total como $expected',
+    async ({ total, expected }) => {
+      const branchId = await createBranch('branch-decimal');
+      const customer = await createUser('cliente-decimal');
+      const orderId = await createOrder(branchId, customer);
+      await client.query('UPDATE orders SET total=$1 WHERE id=$2', [
+        total,
+        orderId,
+      ]);
+      const response = await request(app.getHttpServer())
+        .get('/api/v1/orders/me')
+        .set('Authorization', `Bearer ${tokenFor(customer)}`)
+        .expect(200);
+      expect(response.body).toHaveLength(1);
+      expect(response.body[0]).toMatchObject({ id: orderId, total: expected });
+    },
+  );
 
   it('401 rechaza sin sesión', async () => {
     await request(app.getHttpServer()).get('/api/v1/orders/me').expect(401);
@@ -216,7 +273,7 @@ describe.sequential('BE-02: pedidos propios contra PostgreSQL', () => {
 
     await request(app.getHttpServer())
       .get('/api/v1/orders/me')
-      .set('Authorization', `Bearer ${await tokenFor(waiter)}`)
+      .set('Authorization', `Bearer ${tokenFor(waiter)}`)
       .expect(403);
   });
 });
