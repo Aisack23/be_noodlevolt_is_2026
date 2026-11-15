@@ -26,6 +26,17 @@ export class BranchesQueryService {
     if (!branch) throw new NotFoundException('La sucursal no existe.');
     return toResponse(branch);
   }
+
+  async findByUser(userId: string): Promise<BranchResponseDto> {
+    const branch = await this.repository.findByUserId(userId);
+    
+    if (!branch) {
+      throw new NotFoundException('El usuario no tiene una sucursal asignada.');
+    }
+
+    return toResponse(branch as PublicBranch);
+  }
+
 }
 
 function toResponse(branch: PublicBranch): BranchResponseDto {
@@ -38,3 +49,4 @@ function toResponse(branch: PublicBranch): BranchResponseDto {
     isOpen: branch.isActive && (branch.config?.isOpen ?? false),
   };
 }
+

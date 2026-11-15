@@ -54,14 +54,16 @@ export class DiningQueryService {
   }
 
   private async requireBranch(actor: DiningActor, branchId: string) {
-    if (
-      !roles.has(actor.role) ||
-      (actor.role !== 'GENERAL_MANAGER' &&
-        actor.branchId?.toLowerCase() !== branchId.toLowerCase())
-    ) {
-      throw new ForbiddenException(
-        'Se requiere personal autorizado de la sucursal.',
-      );
+    const isStaff = roles.has(actor.role);
+    if (isStaff) {
+      if (
+        actor.role !== 'GENERAL_MANAGER' &&
+        actor.branchId?.toLowerCase() !== branchId.toLowerCase()
+      ) {
+        throw new ForbiddenException(
+          'Se requiere personal autorizado de la sucursal.',
+        );
+      }
     }
     const branch = await this.repository.findBranch(branchId);
     if (!branch?.isActive)

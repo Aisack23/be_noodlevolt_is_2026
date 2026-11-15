@@ -6,7 +6,8 @@ import {
   ApiOperation,
   ApiTags,
 } from '@nestjs/swagger';
-import { Public } from '@Auth/decorators';
+import { Public, CurrentUser } from '@Auth/decorators';
+import type { User } from '@PrismaClient';
 import { BranchResponseDto } from '../dto/branch-response.dto.js';
 import { BranchesQueryService } from '../services/branches-query.service.js';
 
@@ -43,4 +44,15 @@ export class BranchesQueryController {
   ): Promise<BranchResponseDto> {
     return this.service.find(id);
   }
+
+@Get('me/branch')
+  @ApiOperation({
+    summary: 'Obtiene la sucursal asociada al gerente o empleado autenticado.',
+  })
+  @ApiOkResponse({ type: BranchResponseDto })
+  @ApiNotFoundResponse({ description: 'El usuario no tiene una sucursal asignada.' })
+  findMyBranch(@CurrentUser() user: User): Promise<BranchResponseDto> {
+    return this.service.findByUser(user.id);
+  }
+
 }
