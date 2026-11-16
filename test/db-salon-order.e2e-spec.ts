@@ -7,6 +7,7 @@ import { Client } from 'pg';
 import request from 'supertest';
 
 const branchId = randomUUID();
+const branchName = `salon-branch-${branchId.slice(0, 8)}`;
 const roomId = randomUUID();
 const tableId = randomUUID();
 const categoryId = randomUUID();
@@ -42,7 +43,7 @@ describe('BE-02: pedido de salón para mesero', () => {
     try {
       await db.query(
         'INSERT INTO branches (id,name,address) VALUES ($1,$2,$3)',
-        [branchId, 'salon-branch', 'Sucursal para dine-in'],
+        [branchId, branchName, 'Sucursal para dine-in'],
       );
       await db.query(
         'INSERT INTO branch_configs (id,branch_id,is_open) VALUES ($1,$2,true)',
@@ -100,8 +101,8 @@ describe('BE-02: pedido de salón para mesero', () => {
       await db.query('DELETE FROM tables WHERE branch_id=$1', [branchId]);
       await db.query('DELETE FROM dining_rooms WHERE branch_id=$1', [branchId]);
       await db.query('DELETE FROM branch_configs WHERE branch_id=$1', [branchId]);
-      await db.query('DELETE FROM branches WHERE id=$1', [branchId]);
       await db.query('DELETE FROM users WHERE id=$1', [waiterId]);
+      await db.query('DELETE FROM branches WHERE id=$1', [branchId]);
       await db.end();
     }
     if (app) await app.close();

@@ -161,11 +161,15 @@ export class OrdersRepository {
       const lockedTable = await tx.$queryRaw<
         { id: string; number: string; status: string; room_is_active: boolean | null }[]
       >(Prisma.sql`
-        SELECT t.id, t.number, t.status, r.is_active AS "room_is_active"
+        SELECT t.id, t.number, t.status, (
+          SELECT r.is_active
+          FROM dining_rooms r
+          WHERE r.id = t.room_id AND r.branch_id = t.branch_id
+        ) AS "room_is_active"
         FROM tables t
-        LEFT JOIN dining_rooms r ON r.id=t.room_id AND r.branch_id=t.branch_id
         WHERE t.id=${input.tableId}::uuid AND t.branch_id=${branchId}::uuid
-        FOR UPDATE`);
+        FOR UPDATE OF t`);
+
       if (!lockedTable[0])
         throw new NotFoundException(
           'La mesa no existe o no está en esta sucursal.',
