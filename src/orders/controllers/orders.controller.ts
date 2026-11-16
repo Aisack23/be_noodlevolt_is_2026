@@ -15,7 +15,9 @@ import type { Response } from 'express';
 import type { User } from '@PrismaClient';
 import { CurrentUser } from '@Auth/decorators';
 import { CreateOrderDto } from '../dto/create-order.dto.js';
+import { CreateSalonOrderDto } from '../dto/create-salon-order.dto.js';
 import { OrderResponseDto } from '../dto/order-response.dto.js';
+import { SalonOrderResponseDto } from '../dto/salon-order-response.dto.js';
 import { OrdersService } from '../services/orders.service.js';
 
 @ApiTags('orders')
@@ -52,6 +54,42 @@ export class OrdersController {
     @Res({ passthrough: true }) response: Response,
   ): Promise<OrderResponseDto> {
     const result = await this.orders.create(user, body);
+    response.status(result.created ? 201 : 200);
+    return result.order;
+  }
+
+  @Post('salon')
+  @ApiOperation({
+    summary: 'Registra un pedido de salón para un mesero autenticado.',
+    description:
+      'Solo WAITER con sucursal activa. Reusa una cuenta abierta para la mesa o la crea dentro de la misma transacción, deja el estado inicial en PENDING y usa precios vigentes del servidor para el total.',
+  })
+  @ApiCreatedResponse({ type: SalonOrderResponseDto })
+  @ApiOkResponse({
+    type: SalonOrderResponseDto,
+    description: 'Reintento idéntico: devuelve el pedido existente.',
+  })
+  @ApiBadRequestResponse({
+    description:
+      'UUID, cantidades, líneas vacías o duplicadas; campos extra no permitidos.',
+  })
+  @ApiUnauthorizedResponse({ description: 'Falta sesión válida.' })
+  @ApiForbiddenResponse({
+    description: 'Se requiere rol WAITER asignado a una sucursal.',
+  })
+  @ApiNotFoundResponse({
+    description: 'Mesa inexistente o fuera de la sucursal del mesero.',
+  })
+  @ApiConflictResponse({
+    description:
+      'Sucursal cerrada/inactiva, salón inactivo, mesa fuera de servicio, platillo no disponible o clave reutilizada con otro contenido.',
+  })
+  async createSalon(
+    @CurrentUser() user: User,
+    @Body() body: CreateSalonOrderDto,
+    @Res({ passthrough: true }) response: Response,
+  ): Promise<SalonOrderResponseDto> {
+    const result = await this.orders.createSalon(user, body);
     response.status(result.created ? 201 : 200);
     return result.order;
   }
