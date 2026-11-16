@@ -79,4 +79,24 @@ export class BranchRepository {
       data: { isActive },
     });
   }
+
+  async findByUserId(userId: string) {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: {
+        branch: {
+          select: {
+            id: true,
+            name: true,
+            address: true,
+            timeZone: true,
+            isActive: true,
+            config: { select: { isOpen: true } },
+          },
+        },
+      },
+    });
+
+    return user?.branch ?? null;
+  }
 }

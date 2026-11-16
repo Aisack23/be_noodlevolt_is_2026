@@ -1,4 +1,4 @@
-import { Body, Controller, Inject, Post } from '@nestjs/common';
+import { Body, Controller, Get, Inject, Param, ParseUUIDPipe, Post, Query, BadRequestException } from '@nestjs/common';
 import {
   ApiBadRequestResponse,
   ApiBearerAuth,
@@ -6,12 +6,14 @@ import {
   ApiCreatedResponse,
   ApiForbiddenResponse,
   ApiNotFoundResponse,
+  ApiOkResponse,
   ApiOperation,
+  ApiQuery,
   ApiTags,
   ApiUnauthorizedResponse,
 } from '@nestjs/swagger';
 import { CurrentUser } from '@Auth/decorators';
-import type { User } from '@PrismaClient';
+import type { User, Reservation } from '@PrismaClient';
 import { CreateReservationDto } from '../dto/create-reservation.dto.js';
 import { ReservationResponseDto } from '../dto/reservation-response.dto.js';
 import { ReservationBookingService } from '../services/reservation-booking.service.js';
@@ -46,5 +48,29 @@ export class ReservationBookingController {
     @Body() input: CreateReservationDto,
   ): Promise<ReservationResponseDto> {
     return this.service.book(user, input);
+  }
+
+  @Get('branches/:branchId/reservations')
+  @ApiOperation({
+    summary: 'Lista las reservaciones de una sucursal para una fecha específica.',
+  })
+  @ApiQuery({
+    name: 'date',
+    required: true,
+    description: 'Fecha en formato YYYY-MM-DD',
+    example: '2026-11-16',
+  })
+  @ApiOkResponse({ type: [ReservationResponseDto] })
+  @ApiUnauthorizedResponse({ description: 'Se requiere sesión válida.' })
+  @ApiForbiddenResponse({ description: 'Se requiere personal autorizado de la sucursal.' })
+  findBranchReservations(
+    @CurrentUser() actor: User,
+    @Param('branchId', new ParseUUIDPipe()) branchId: string,
+    @Query('date') date: string, 
+  ): Promise<Reservation[]> {
+    if (!date) {
+      throw new BadRequestException('El parámetro de consulta "date" es obligatorio.');
+    }
+    return this.service.findByBranchAndDate(actor, branchId, date);
   }
 }
