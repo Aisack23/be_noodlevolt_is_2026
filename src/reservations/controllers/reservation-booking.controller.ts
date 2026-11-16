@@ -1,4 +1,14 @@
-import { Body, Controller, Get, Inject, Param, ParseUUIDPipe, Post, Query, BadRequestException } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  Inject,
+  Param,
+  ParseUUIDPipe,
+  Post,
+  Query,
+  BadRequestException,
+} from '@nestjs/common';
 import {
   ApiBadRequestResponse,
   ApiBearerAuth,
@@ -31,7 +41,7 @@ export class ReservationBookingController {
   @ApiOperation({
     summary: 'Reserva una mesa disponible durante 90 minutos.',
     description:
-      'CLIENT. La mesa se asigna automáticamente por menor capacidad suficiente e ID. El propietario proviene de la sesión.',
+      'CLIENT. tableId opcional selecciona una mesa de la sucursal. Si se omite, asignación automática por menor capacidad suficiente e ID. Intervalo de 90 minutos; PENDING y CONFIRMED bloquean. El propietario proviene de la sesión.',
   })
   @ApiCreatedResponse({ type: ReservationResponseDto })
   @ApiBadRequestResponse({
@@ -41,7 +51,8 @@ export class ReservationBookingController {
   @ApiForbiddenResponse({ description: 'Se requiere rol CLIENT.' })
   @ApiNotFoundResponse({ description: 'Sucursal inexistente o inactiva.' })
   @ApiConflictResponse({
-    description: 'Sin mesa elegible o intervalo sin disponibilidad.',
+    description:
+      'Sin mesa elegible, mesa de otra sucursal, salón inactivo o intervalo sin disponibilidad.',
   })
   book(
     @CurrentUser() user: User,
@@ -52,7 +63,8 @@ export class ReservationBookingController {
 
   @Get('branches/:branchId/reservations')
   @ApiOperation({
-    summary: 'Lista las reservaciones de una sucursal para una fecha específica.',
+    summary:
+      'Lista las reservaciones de una sucursal para una fecha específica.',
   })
   @ApiQuery({
     name: 'date',
@@ -62,14 +74,18 @@ export class ReservationBookingController {
   })
   @ApiOkResponse({ type: [ReservationResponseDto] })
   @ApiUnauthorizedResponse({ description: 'Se requiere sesión válida.' })
-  @ApiForbiddenResponse({ description: 'Se requiere personal autorizado de la sucursal.' })
+  @ApiForbiddenResponse({
+    description: 'Se requiere personal autorizado de la sucursal.',
+  })
   findBranchReservations(
     @CurrentUser() actor: User,
     @Param('branchId', new ParseUUIDPipe()) branchId: string,
-    @Query('date') date: string, 
+    @Query('date') date: string,
   ): Promise<Reservation[]> {
     if (!date) {
-      throw new BadRequestException('El parámetro de consulta "date" es obligatorio.');
+      throw new BadRequestException(
+        'El parámetro de consulta "date" es obligatorio.',
+      );
     }
     return this.service.findByBranchAndDate(actor, branchId, date);
   }

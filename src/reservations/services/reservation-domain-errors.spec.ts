@@ -9,6 +9,7 @@ import {
   ReservationUnavailableError,
 } from '../errors/reservation-booking.errors.js';
 import { ReservationBookingRepository } from '../repositories/reservation-booking.repository.js';
+import { ReservationRepository } from '../repositories/reservation.repository.js';
 import { ReservationBookingService } from './reservation-booking.service.js';
 
 const customer = { id: '10000000-0000-4000-8000-000000000001', role: 'CLIENT' };
@@ -24,6 +25,7 @@ describe('ReservationBookingService: traducción de errores de dominio', () => {
   const repository = { book: vi.fn() };
   const service = new ReservationBookingService(
     repository as unknown as ReservationBookingRepository,
+    {} as ReservationRepository,
   );
   beforeEach(() => {
     vi.resetAllMocks();

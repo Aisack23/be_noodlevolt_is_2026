@@ -1,0 +1,2 @@
+ALTER TABLE reservations DROP CONSTRAINT reservations_no_active_overlap;
+ALTER TABLE reservations DROP CONSTRAINT reservations_valid_interval;

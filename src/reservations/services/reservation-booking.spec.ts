@@ -10,6 +10,7 @@ import { JwtAuthGuard } from '@Auth/guards';
 import type { UsersService } from '@Users/services';
 import { ReservationBookingController } from '../controllers/reservation-booking.controller.js';
 import { ReservationBookingRepository } from '../repositories/reservation-booking.repository.js';
+import { ReservationRepository } from '../repositories/reservation.repository.js';
 import { ReservationBookingService } from './reservation-booking.service.js';
 
 vi.mock('../repositories/reservation-booking.repository.js', () => ({
@@ -43,6 +44,7 @@ describe('BE-04: HTTP, sesión y validaciones', () => {
       controllers: [ReservationBookingController],
       providers: [
         ReservationBookingService,
+        { provide: ReservationRepository, useValue: {} },
         { provide: ReservationBookingRepository, useValue: repository },
         {
           provide: APP_GUARD,
@@ -124,7 +126,10 @@ describe('BE-04: HTTP, sesión y validaciones', () => {
     { phone: '       ' },
     { branchId: 'invalid' },
     { userId },
-    { tableId: userId },
+    { tableId: 'invalid' },
+    { customerId: userId },
+    { startsAt: '2030-01-01T12:00:00+24:00' },
+    { startsAt: '2030-01-01T12:00:00+06:60' },
     { endsAt: '2030-01-01T14:00:00Z' },
     { status: 'CONFIRMED' },
   ])(
