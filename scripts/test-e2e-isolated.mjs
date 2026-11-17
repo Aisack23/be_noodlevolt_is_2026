@@ -29,10 +29,14 @@ try {
   await client.end();
   client = undefined;
   process.exitCode = await new Promise((resolve) => {
-    const child = spawn('npm', ['run', 'test:e2e'], {
-      stdio: 'inherit',
-      env: { ...process.env, DATABASE_URL: url.toString() },
-    });
+    const child = spawn(
+      'npm',
+      ['run', 'test:e2e', '--', ...process.argv.slice(2)],
+      {
+        stdio: 'inherit',
+        env: { ...process.env, DATABASE_URL: url.toString() },
+      },
+    );
     child.on('exit', (code) => resolve(code ?? 1));
     child.on('error', () => resolve(1));
   });

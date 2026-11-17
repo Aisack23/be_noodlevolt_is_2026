@@ -1,6 +1,7 @@
-import { ApiProperty } from '@nestjs/swagger';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import {
   IsInt,
+  IsOptional,
   IsISO8601,
   IsString,
   IsUUID,
@@ -23,8 +24,16 @@ export class CreateReservationDto {
   })
   @IsString()
   @IsISO8601({ strict: true })
-  @Matches(/T.*(?:Z|[+-]\d{2}:\d{2})$/)
+  @Matches(/T.*(?:Z|[+-](?:[01]\d|2[0-3]):[0-5]\d)$/)
   startsAt!: string;
+
+  @ApiPropertyOptional({
+    format: 'uuid',
+    description: 'Mesa concreta; si se omite, asignación automática.',
+  })
+  @IsOptional()
+  @IsUUID()
+  tableId?: string;
 
   @ApiProperty({ minimum: 1, maximum: 100 })
   @IsInt()
