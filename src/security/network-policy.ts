@@ -17,6 +17,19 @@ export function parseCidrs(value: unknown, trustedProxy = false): string[] {
   });
 }
 
+/**
+ * Valor para `app.set('trust proxy')`. Con hops se confía en un número fijo de
+ * proxies (Render añade la IP real al final de X-Forwarded-For); con CIDR, solo
+ * en esas direcciones. Sin ninguno, Express ignora X-Forwarded-*.
+ */
+export function trustProxySetting(
+  cidrs: readonly string[],
+  hops: number,
+): number | string[] | false {
+  if (hops > 0) return hops;
+  return cidrs.length > 0 ? [...cidrs] : false;
+}
+
 export function isAllowedIp(
   ip: string | undefined,
   cidrs: readonly string[],

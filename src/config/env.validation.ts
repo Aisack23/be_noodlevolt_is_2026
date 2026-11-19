@@ -19,6 +19,7 @@ export interface EnvConfig {
   BCRYPT_SALT_ROUNDS: number;
   CORS_ORIGINS: string[];
   TRUSTED_PROXY_CIDRS: string[];
+  TRUSTED_PROXY_HOPS: number;
   IP_ALLOWLIST: string[];
   RATE_LIMIT_GLOBAL: number;
   RATE_LIMIT_LOGIN_IP: number;
@@ -27,6 +28,7 @@ export interface EnvConfig {
   RATE_LIMIT_REFRESH: number;
   RATE_LIMIT_WRITES: number;
   SWAGGER_ENABLED: boolean;
+  ALLOW_DEMO_SEED: boolean;
 }
 
 const requiredVars = ['DATABASE_URL', 'JWT_SECRET'] as const;
@@ -155,6 +157,13 @@ export function validateEnv(raw: Record<string, unknown>): EnvConfig {
       'DATABASE_URL debe ser una URL PostgreSQL válida; producción requiere una contraseña propia y sslmode=verify-full.',
     );
   }
+  const trustedProxyCidrs = parseCidrs(raw.TRUSTED_PROXY_CIDRS, true);
+  const trustedProxyHops = readInt(raw, 'TRUSTED_PROXY_HOPS', 0, 1, 3);
+  // Dos formas de confiar en el proxy a la vez podrían aceptar IPs falsas.
+  if (trustedProxyHops > 0 && trustedProxyCidrs.length > 0)
+    throw new Error(
+      'TRUSTED_PROXY_HOPS y TRUSTED_PROXY_CIDRS son excluyentes; define solo uno.',
+    );
   const origins = parseOrigins(raw.CORS_ORIGINS);
   if (
     nodeEnv === 'production' &&
@@ -178,7 +187,8 @@ export function validateEnv(raw: Record<string, unknown>): EnvConfig {
     ),
     BCRYPT_SALT_ROUNDS: readInt(raw, 'BCRYPT_SALT_ROUNDS', 12, 10, 14),
     CORS_ORIGINS: origins,
-    TRUSTED_PROXY_CIDRS: parseCidrs(raw.TRUSTED_PROXY_CIDRS, true),
+    TRUSTED_PROXY_CIDRS: trustedProxyCidrs,
+    TRUSTED_PROXY_HOPS: trustedProxyHops,
     IP_ALLOWLIST: parseCidrs(raw.IP_ALLOWLIST),
     RATE_LIMIT_GLOBAL: readInt(raw, 'RATE_LIMIT_GLOBAL', 300, 1, 10000),
     RATE_LIMIT_LOGIN_IP: readInt(raw, 'RATE_LIMIT_LOGIN_IP', 10, 1, 100),
@@ -197,5 +207,6 @@ export function validateEnv(raw: Record<string, unknown>): EnvConfig {
       'SWAGGER_ENABLED',
       nodeEnv !== 'production',
     ),
+    ALLOW_DEMO_SEED: readBoolean(raw, 'ALLOW_DEMO_SEED', false),
   };
 }

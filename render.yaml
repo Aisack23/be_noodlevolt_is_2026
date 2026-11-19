@@ -1,0 +1,46 @@
+# Blueprint de Render para la API (plan gratuito, runtime Docker).
+# No contiene secretos: los valores con `sync: false` se cargan a mano en el
+# panel de Render; JWT_SECRET se genera en Render. Guía: docs/despliegue-pasos.md.
+services:
+  - type: web
+    name: noodlevolt-api
+    runtime: docker
+    plan: free
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    # Render inyecta PORT; la app ya lo lee desde la configuración.
+    # El health check usa el endpoint raíz de la API (exento del 426 de HTTPS).
+    healthCheckPath: /api/v1
+    # El plan gratuito no tiene pre-deploy command: las migraciones van al arrancar.
+    dockerCommand: sh -c "npx prisma migrate deploy && node dist/main.js"
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: DATABASE_URL
+        sync: false
+      - key: JWT_SECRET
+        generateValue: true
+      - key: JWT_EXPIRES_IN
+        value: 15m
+      - key: REFRESH_TOKEN_EXPIRES_IN_DAYS
+        value: '7'
+      - key: BCRYPT_SALT_ROUNDS
+        value: '12'
+      - key: CORS_ORIGINS
+        sync: false
+      - key: TRUSTED_PROXY_HOPS
+        value: '1'
+      - key: SWAGGER_ENABLED
+        value: 'true'
+      - key: RATE_LIMIT_GLOBAL
+        value: '300'
+      - key: RATE_LIMIT_LOGIN_IP
+        value: '10'
+      - key: RATE_LIMIT_LOGIN_ACCOUNT
+        value: '30'
+      - key: RATE_LIMIT_REGISTER
+        value: '10'
+      - key: RATE_LIMIT_REFRESH
+        value: '30'
+      - key: RATE_LIMIT_WRITES
+        value: '60'
