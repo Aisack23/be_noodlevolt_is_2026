@@ -11,7 +11,7 @@ flowchart LR
 ```
 
 - El navegador guarda la sesión en una cookie `httpOnly` que escribe el frontend; el JavaScript del cliente no puede leer el token.
-- El frontend llama a la API desde el servidor de Next.js con la variable `API_URL` [verificar que todas las llamadas sean del lado del servidor].
+- El frontend llama a la API desde el servidor de Next.js, con server actions y route handlers. Los componentes del navegador solo importan funciones auxiliares y tipos de `lib/api`, y consultan rutas propias `/api/...` de Next.
 - La API expone `/api/v1` y valida el JWT en cada ruta protegida.
 - Producción: ver [06 · Despliegue](06-despliegue.md).
 

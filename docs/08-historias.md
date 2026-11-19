@@ -5,7 +5,7 @@ Las 11 historias del alcance (una por módulo y una del anexo de configuración)
 **Fuentes:**
 
 - Responsables y estado: cards de Trello, columna actual al 18 de noviembre de 2026.
-- PR: merges de `git log --merges` en `origin/develop` de los repositorios backend y frontend. Los números de PR son distintos en cada repositorio; cuando la card y el historial de git no coinciden, se marca con [verificar].
+- PR: merges de `git log --merges` en `origin/develop` de los repositorios backend y frontend. Los números de PR son distintos en cada repositorio. Los cambios de base que no tienen PR propia se indican en la fila de la historia.
 - Los PR del backend se escriben como `BE #n`, los del frontend como `FE #n` y los de la base de datos (que viven en el backend) como `DB #n`.
 
 Estados: **Hecho** (columna Hecho de Trello) y **En QA** (columna QA). Todas las historias tienen su código fusionado en `develop`.
@@ -40,7 +40,7 @@ Estados: **Hecho** (columna Hecho de Trello) y **En QA** (columna QA). Todas las
 
 | ID | Historia | Responsable | Card | PRs | Estado |
 |---|---|---|---|---|---|
-| HU-05 | Consultar insumos con bajo stock | Pamela | [Card HU-05](https://trello.com/c/eJ4S7zuw) | DB #12 · BE #20, #21 (ajustes del primer avance) · FE #4 [verificar: FE #9 "documento" también es de FE-05] | Hecho |
+| HU-05 | Consultar insumos con bajo stock | Pamela | [Card HU-05](https://trello.com/c/eJ4S7zuw) | DB #12 · BE #20, #21 (ajustes del primer avance) · FE #4, #9 | Hecho |
 
 ## E6 · Pagos y facturación
 
@@ -88,7 +88,3 @@ Estados: **Hecho** (columna Hecho de Trello) y **En QA** (columna QA). Todas las
 - **HU-05:** la descripción de la card contiene credenciales de cuentas de prueba. Ver [09 · Problemas conocidos](09-problemas-conocidos.md#96-seguridad).
 - **HU-07:** falta la evidencia de QA (QA-07) para los tres criterios.
 - **HU-11:** el criterio 2 se completa en BE-02. Falta acordar un GET protegido para que el gerente vea la última modificación y quién la hizo; la card lo registra como pendiente.
-
-## Responsables según otros documentos
-
-Otra lista interna de responsables del equipo asigna algunas épicas de forma distinta (por ejemplo, E2 a Pamela y E4 a Gabriela). Esta tabla sigue el documento V_FINAL y las cards de Trello, que coinciden entre sí. La diferencia debe aclararse con el equipo antes de la entrega [verificar].

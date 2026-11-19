@@ -118,7 +118,7 @@ Roles: GERENTE (su sucursal), GERENTE_GENERAL (varias sucursales).
 
 Rol: GERENTE.
 
-1. Abrir la pantalla de estado de la sucursal (`/admin/sucursales` [verificar ruta y permisos en la interfaz]).
+1. Abrir la pantalla de estado de la sucursal (`/admin/sucursales`). La pantalla está pensada para el gerente de la sucursal (BRANCH_ADMIN). La interfaz también la muestra al gerente general, pero el servidor solo permite el cambio al gerente de la sucursal asignada.
 2. Cambiar el estado entre ABIERTA y CERRADA y confirmar.
 3. Con la sucursal cerrada, el cliente sigue viendo el menú, pero el servidor rechaza nuevos pedidos.
 4. Un gerente de otra sucursal recibe 403 y el estado no cambia.

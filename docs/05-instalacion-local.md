@@ -103,8 +103,8 @@ Generar un `JWT_SECRET` con `openssl rand -base64 32`.
 | Comando | Qué ejecuta | Requisito |
 |---|---|---|
 | `npm test` | Pruebas unitarias (`*.spec.ts`) con dobles del repositorio | Ninguno |
-| `npm run test:db` | Pruebas contra la base de datos | PostgreSQL de Docker levantado y migrado [verificar si usa una base separada] |
-| `npm run test:e2e` | Pruebas de endpoints con Supertest, incluida autorización por rol y sucursal | PostgreSQL de Docker |
+| `npm run test:db` | Pruebas contra la base de datos | PostgreSQL con la `DATABASE_URL` del `.env`. Las pruebas crean sus propias filas y las borran por id; conviene una base de pruebas dedicada |
+| `npm run test:e2e` | Pruebas de endpoints con Supertest, incluidas las suites `db-*`, con autorización por rol y sucursal | PostgreSQL con la `DATABASE_URL` del `.env` |
 | `npm run test:security` | Pruebas de la capa de seguridad contra la base | PostgreSQL de Docker |
 | `npm run test:migrations` | Verifica que cada migración tenga su reversión | Ninguno |
 | `npm run lint` | oxlint con reglas de tipos | Ninguno |

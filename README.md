@@ -39,7 +39,7 @@ Los usuarios de prueba se entregan en Moodle, no en este repositorio.
 | [06 · Despliegue](docs/06-despliegue.md) | Publicación en Vercel, Render y Neon; flujo de releases y variables de producción |
 | [07 · Forma de trabajo](docs/07-forma-de-trabajo.md) | Tablero, Git Flow, convención de commits y de pull requests |
 | [08 · Historias](docs/08-historias.md) | Las 11 historias de usuario con responsable, card, PR y estado |
-| [09 · Problemas conocidos](docs/09-problemas-conocidos.md) | Limitaciones, pendientes y puntos por verificar |
+| [09 · Problemas conocidos](docs/09-problemas-conocidos.md) | Limitaciones, pendientes y puntos abiertos |
 
 ## Frontend
 

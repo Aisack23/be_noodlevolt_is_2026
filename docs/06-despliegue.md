@@ -9,7 +9,7 @@
 | Base de datos (PostgreSQL 18) | Neon | [pendiente] (no se publica) | — |
 | Swagger | Render | [pendiente]/api/docs (solo con `SWAGGER_ENABLED=true`) | `main` |
 
-Al 18 de noviembre de 2026, `main` solo contiene los merges iniciales del boilerplate y no tiene tags de versión [verificar antes de la entrega]. El despliegue en producción debe hacerse desde un release, no desde una rama de funcionalidad.
+`main` solo contiene los merges iniciales del boilerplate. La versión v1.0.0 se publica desde `release/1.0.0` hacia `main`. El despliegue en producción sale de un release, no de una rama de funcionalidad.
 
 ## 6.2 Cómo se publica una versión
 
@@ -65,7 +65,7 @@ Solo se listan los nombres. Los valores se configuran en el panel de cada plataf
 
 | Variable | Descripción |
 |---|---|
-| `API_URL` | URL base de la API de producción, con el prefijo `/api/v1` [verificar el formato que espera el frontend] |
+| `API_URL` | URL base de la API de producción, terminada en `/api/v1`. El frontend construye las rutas de forma relativa a esa base (`auth/login`, `users`, etc.) |
 
 ## 6.4 Reglas de arranque en producción
 
@@ -78,7 +78,7 @@ Al iniciar, la API valida su configuración y se detiene con un mensaje claro si
 
 ## 6.5 Migraciones
 
-Antes de iniciar la API se aplican las migraciones pendientes con `npm run prisma:deploy` (`prisma migrate deploy`). La imagen de `docker-compose.yml` lo hace con `npx prisma migrate deploy && node dist/main.js`. Las migraciones nunca se ejecutan con `prisma migrate dev` en producción [verificar el comando de inicio configurado en Render].
+Antes de iniciar la API se aplican las migraciones pendientes con `npm run prisma:deploy` (`prisma migrate deploy`). La imagen de `docker-compose.yml` lo hace con `npx prisma migrate deploy && node dist/main.js`. En Render, el comando de inicio debe aplicar `prisma migrate deploy` antes de iniciar la API. Las migraciones nunca se ejecutan con `prisma migrate dev` en producción.
 
 Cada migración tiene su archivo `down.sql`, y `npm run test:migrations` verifica que existan.
 
@@ -87,4 +87,4 @@ Cada migración tiene su archivo `down.sql`, y `npm run test:migrations` verific
 1. `GET /api/v1` responde 200 (health check).
 2. `GET /api/v1/dishes?branchId=<id>` responde con el menú de una sucursal.
 3. Iniciar sesión desde el frontend desplegado y comprobar que la cookie se guarda como `httpOnly`.
-4. Confirmar que Swagger no está disponible si `SWAGGER_ENABLED=false` [verificar el código de respuesta en el despliegue].
+4. `GET /api/docs` responde 404: con `SWAGGER_ENABLED=false` no se registra la ruta de Swagger.
