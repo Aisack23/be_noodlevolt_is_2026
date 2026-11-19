@@ -360,8 +360,8 @@ Los enums se guardan en inglés. La interfaz y la documentación de la historia 
 
 | `PaymentStatus` (base) | Historia de usuario |
 |---|---|
-| `PAID` | APROBADO [verificar: la API de pagos responde APROBADO/RECHAZADO] |
-| `REJECTED` | RECHAZADO |
+| `PAID` | APROBADO (mezcla conocida: la base guarda `PAID` y la API responde `APROBADO`; ver [9.1](09-problemas-conocidos.md#91-estados-y-enums)) |
+| `REJECTED` | RECHAZADO (mezcla conocida: la base guarda `REJECTED`; la API responde `RECHAZADO`) |
 
 ## 3.3 Descripción de tablas
 

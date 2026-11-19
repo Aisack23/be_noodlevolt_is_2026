@@ -5,7 +5,7 @@ Lista de lo que falla, quedó incompleto o no está confirmado. Lo marcado con *
 ## 9.1 Estados y enums
 
 - **Estados en inglés en la API.** Los pedidos devuelven `PENDING`, `IN_PREPARATION`, `READY` y `DELIVERED`. La historia de usuario usa PENDIENTE, EN_PREPARACION, LISTO y ENTREGADO. La interfaz traduce; los textos de error y la documentación de algunas respuestas mezclan ambos idiomas.
-- **Respuesta de pago distinta de la base.** La base guarda `PAID` y `REJECTED`, pero la documentación de Swagger del pago simulado habla de APROBADO y RECHAZADO [verificar qué valor devuelve la API].
+- **Pagos: mezcla de idiomas entre la base y la API.** La base guarda `PAID` y `REJECTED`, y la API del pago simulado responde APROBADO y RECHAZADO. Es una mezcla conocida, no un error de datos: la interfaz muestra el texto en español.
 - **Valores heredados del enum**, sin uso en el MVP: `OrderStatus.PENDING_PAYMENT` y `CONFIRMED`; `OrderType.DELIVERY`; `CANCELED` en `AccountStatus` y `OrderItemStatus`; `TableStatus.RESERVED` y `OUT_OF_SERVICE`; `PaymentStatus.REFUNDED` (no hay devoluciones en el MVP). La decisión de eliminarlos quedó abierta en `docs/decisiones/modelo-datos.md`.
 - **Siete roles en la base, cinco en la historia.** `CASHIER` (CAJERO) e `INVENTORY_MANAGER` (ENCARGADO_INVENTARIO) existen en el enum, pero no tienen flujo en las historias del alcance.
 
@@ -24,6 +24,8 @@ Lista de lo que falla, quedó incompleto o no está confirmado. Lo marcado con *
 
 - **Roles en los servicios, no en un guard.** No hay un `RolesGuard` con `@Roles`. Cada servicio comprueba su rol. Si se agrega una ruta nueva, un desarrollador puede olvidar la comprobación. Ver [02 · Arquitectura](02-arquitectura.md#25-decisiones-técnicas), decisión 9.
 - **Acceso de gerente a la configuración.** `GET /branches/:id/config` es público y solo expone `isOpen`. Falta un GET protegido para que el gerente vea la última modificación y quién la hizo (HU-11).
+- **Sin endpoint para deshabilitar platillos.** El gerente no puede deshabilitar un platillo desde la API. El estado `DISABLED` solo viene del seed o se cambia directamente en la base.
+- **Sin flujo para cambiar el estado de una mesa.** `TableStatus` (LIBRE, OCUPADA, POR_LIMPIAR, etc.) no se modifica desde ningún endpoint.
 - **Acceso de gerente general a la sucursal.** Algunos endpoints del personal permiten al gerente general ver cualquier sucursal, y otros solo la suya [verificar que coincida con la sección 2.7 de la PDF en cada ruta].
 
 ## 9.5 Base de datos
@@ -54,7 +56,7 @@ Lista de lo que falla, quedó incompleto o no está confirmado. Lo marcado con *
 
 ## 9.9 Calidad y pendientes de QA
 
-- **Historias en QA.** HU-04, HU-05, HU-07 y HU-10 están en la columna QA, no en Hecho.
+- **Historias en QA.** HU-04, HU-07 y HU-10 están en la columna QA, no en Hecho. HU-05 ya está en Hecho.
 - **HU-07 sin evidencia.** Falta registrar la evidencia de QA-07 para los tres criterios sobre el ambiente desplegado.
 - **PR sin enlazar en la card.** HU-04 y HU-10 dicen "pendiente: enlazar aquí" en la descripción de la card.
 - **Pruebas e2e dependen de Docker.** `test:e2e`, `test:db` y `test:security` necesitan PostgreSQL levantado [verificar que las pruebas no borren datos de la base de desarrollo].
@@ -62,8 +64,6 @@ Lista de lo que falla, quedó incompleto o no está confirmado. Lo marcado con *
 ## 9.10 Documentación
 
 - **Responsables distintos según la fuente.** Otra lista interna del equipo asigna algunas épicas de forma distinta a la PDF y a Trello. Ver [08 · Historias](08-historias.md).
-- **Números de PR que no coinciden.** BE #6 (HU-02) aparece en la card y no en el historial de `develop`.
-- **Usuario de GitHub de Pamela** [verificar]. El correo de los commits sugiere `pamelalexndra`; el nombre de autor del commit es `Pamelalexandragomeztenorio`.
 
 ## 9.11 Convenciones de nombres
 

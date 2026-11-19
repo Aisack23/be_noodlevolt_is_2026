@@ -22,7 +22,7 @@ Estados: **Hecho** (columna Hecho de Trello) y **En QA** (columna QA). Todas las
 
 | ID | Historia | Responsable | Card | PRs | Estado |
 |---|---|---|---|---|---|
-| HU-02 | Registrar pedido para llevar | Isaac | [Card HU-02](https://trello.com/c/mw5q1bmf) | DB #8 · BE #16, #22, #23, #28, #45 [verificar: la card lista BE #6] · FE #3, #10, #11 | Hecho |
+| HU-02 | Registrar pedido para llevar | Isaac | [Card HU-02](https://trello.com/c/mw5q1bmf) | DB #8 · BE #16, #22 (pedido para llevar), #45 (pedido de salón del mesero, Abraham) · FE #3, #10, #11 | Hecho |
 
 ## E3 · Cocina y comandas
 
@@ -34,19 +34,19 @@ Estados: **Hecho** (columna Hecho de Trello) y **En QA** (columna QA). Todas las
 
 | ID | Historia | Responsable | Card | PRs | Estado |
 |---|---|---|---|---|---|
-| HU-04 | Reservar mesa disponible | Diego | [Card HU-04](https://trello.com/c/wKlRAFvI) | BE #31, #34, #44, #46 · FE #16 · DB [verificar: sin PR en el historial de merges] | En QA |
+| HU-04 | Reservar mesa disponible | Diego | [Card HU-04](https://trello.com/c/wKlRAFvI) | BE #31, #34, #44, #46 · FE #16 · DB-04 sin PR propia: sus cambios de base entraron en la PR #31 de Isaac | En QA |
 
 ## E5 · Inventario de insumos
 
 | ID | Historia | Responsable | Card | PRs | Estado |
 |---|---|---|---|---|---|
-| HU-05 | Consultar insumos con bajo stock | Pamela | [Card HU-05](https://trello.com/c/eJ4S7zuw) | DB #12 · BE #20, #21 (ajustes del primer avance) · FE #4 [verificar: FE #9 "documento" también es de FE-05] | En QA |
+| HU-05 | Consultar insumos con bajo stock | Pamela | [Card HU-05](https://trello.com/c/eJ4S7zuw) | DB #12 · BE #20, #21 (ajustes del primer avance) · FE #4 [verificar: FE #9 "documento" también es de FE-05] | Hecho |
 
 ## E6 · Pagos y facturación
 
 | ID | Historia | Responsable | Card | PRs | Estado |
 |---|---|---|---|---|---|
-| HU-06 | Registrar pago simulado | Isaac | [Card HU-06](https://trello.com/c/a6ttvqQA) | BE #17, #32 · FE #14 · DB [verificar: la card lista DB-06 sin número de PR] | Hecho |
+| HU-06 | Registrar pago simulado | Isaac | [Card HU-06](https://trello.com/c/a6ttvqQA) | BE #17, #32 · FE #14 · DB-06 sin PR propia: sus cambios de base entraron en la PR #17 de Isaac | Hecho |
 
 ## E7 · Lealtad y puntos
 
@@ -82,7 +82,8 @@ Estados: **Hecho** (columna Hecho de Trello) y **En QA** (columna QA). Todas las
 
 ## Notas por historia
 
-- **HU-02:** el PR BE #6 que lista la card no aparece en el historial de `develop` [verificar].
+- **HU-02:** BE #16 y #22 son los PR del pedido para llevar, según la card de Trello. El pedido de salón del mesero es #45.
+- **HU-04 y HU-06:** DB-04 y DB-06 no tienen PR propia; sus cambios de base entraron en las PR de Isaac (#31 y #17).
 - **HU-04 y HU-10:** la card dice "PR(s): (pendiente: enlazar aquí)". Los números de esta tabla salen del historial de merges y deben enlazarse en la card.
 - **HU-05:** la descripción de la card contiene credenciales de cuentas de prueba. Ver [09 · Problemas conocidos](09-problemas-conocidos.md#96-seguridad).
 - **HU-07:** falta la evidencia de QA (QA-07) para los tres criterios.

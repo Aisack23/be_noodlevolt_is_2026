@@ -22,7 +22,7 @@ Los usuarios de prueba se entregan en Moodle, no en este repositorio.
 | Nombre | Carnet | Usuario de GitHub | Historias responsables |
 |---|---|---|---|
 | Abraham Alejandro Flores Vásquez | 00067323 | AlejandroFV74 | HU-08, HU-10 |
-| Pamela Alexandra Gómez Tenorio | 00139622 | pamelalexndra [verificar] | HU-01, HU-05, HU-07, HU-11 |
+| Pamela Alexandra Gómez Tenorio | 00139622 | pamelalexndra | HU-01, HU-05, HU-07, HU-11 |
 | Diego Alejandro Iraheta Monterrosa | 00041923 | DiegoIraheta00041923 | HU-04 |
 | Gabriela Denise Maldonado Girón | 00133523 | DeniseMaldonadoG | HU-03 |
 | César Isaac Tovar Jovel | 00016023 | Aisack23 | HU-02, HU-06, HU-09 |
