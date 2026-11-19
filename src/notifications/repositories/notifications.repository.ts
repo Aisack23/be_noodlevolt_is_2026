@@ -68,7 +68,7 @@ export class NotificationsRepository {
       id: string;
       customerId: string;
       branch: { name: string };
-      orderNumber: string | null;
+      orderNumber: string;
     },
   ) {
     const eventKey = `PEDIDO_LISTO:${order.id}:${order.customerId}`;
@@ -82,7 +82,7 @@ export class NotificationsRepository {
           eventKey,
           type: 'PEDIDO_LISTO',
           title: 'Tu pedido está listo',
-          message: `Tu pedido ${order.orderNumber ?? order.id} está listo para retirar en ${order.branch.name}.`,
+          message: `Tu pedido ${order.orderNumber} está listo para retirar en ${order.branch.name}.`,
         },
       ],
       skipDuplicates: true,

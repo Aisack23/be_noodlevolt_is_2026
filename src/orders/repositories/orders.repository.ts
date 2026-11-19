@@ -25,6 +25,7 @@ const orderSelect = {
   branchId: true,
   customerId: true,
   operationId: true,
+  orderNumber: true,
   requestHash: true,
   status: true,
   total: true,
@@ -312,6 +313,7 @@ function toResponse(order: StoredOrder): OrderResponseDto {
     );
   return {
     id: order.id,
+    orderNumber: order.orderNumber,
     branchId: order.branchId,
     operationKey: order.operationId,
     status: order.status,

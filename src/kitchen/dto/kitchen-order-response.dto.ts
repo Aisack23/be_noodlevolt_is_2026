@@ -21,8 +21,8 @@ export class KitchenOrderResponseDto {
   @ApiProperty({ format: 'uuid' })
   id!: string;
 
-  @ApiPropertyOptional({ nullable: true })
-  orderNumber!: string | null;
+  @ApiProperty({ example: 'ORD-000001', description: 'Número legible asignado al crear el pedido.' })
+  orderNumber!: string;
 
   @ApiProperty()
   type!: string;
