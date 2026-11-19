@@ -62,7 +62,7 @@ export class OrdersController {
   @ApiOperation({
     summary: 'Registra un pedido de salón para un mesero autenticado.',
     description:
-      'Solo WAITER con sucursal activa. Reusa una cuenta abierta para la mesa o la crea dentro de la misma transacción, deja el estado inicial en PENDING y usa precios vigentes del servidor para el total.',
+      'Solo WAITER con sucursal activa. Reusa una cuenta abierta para la mesa o la crea dentro de la misma transacción, deja el estado inicial en PENDING y usa precios vigentes del servidor para el total. La mesa pasa a OCCUPIED en esa misma transacción desde AVAILABLE, NEEDS_CLEANING o RESERVED; OUT_OF_SERVICE rechaza el pedido. Si hay platillos no disponibles, el pedido no se crea y el 409 lista todos en unavailableDishes.',
   })
   @ApiCreatedResponse({ type: SalonOrderResponseDto })
   @ApiOkResponse({
@@ -82,7 +82,7 @@ export class OrdersController {
   })
   @ApiConflictResponse({
     description:
-      'Sucursal cerrada/inactiva, salón inactivo, mesa fuera de servicio, platillo no disponible o clave reutilizada con otro contenido.',
+      'Sucursal cerrada/inactiva, salón inactivo, mesa fuera de servicio, platillos no disponibles o clave reutilizada con otro contenido. En platillos no disponibles, dishId es el primero y unavailableDishes lista todos, sin repetir.',
   })
   async createSalon(
     @CurrentUser() user: User,

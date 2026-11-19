@@ -192,6 +192,13 @@ export class OrdersRepository {
           data: { branchId, tableId: input.tableId, status: 'OPEN' },
           select: { id: true },
         }));
+      // La fila ya está bloqueada con FOR UPDATE; el cambio entra en la misma
+      // transacción que el pedido, así que un error de platillos la revierte.
+      if (lockedTable[0].status !== 'OCCUPIED')
+        await tx.diningTable.update({
+          where: { id: input.tableId },
+          data: { status: 'OCCUPIED' },
+        });
 
       const lines = await this.priceSalonLines(tx, branchId, normalized.lines);
       const total = lines.reduce(
@@ -285,11 +292,23 @@ export class OrdersRepository {
         AND d.is_available=true AND d.is_deleted=false AND d.status='AVAILABLE' AND c.is_active=true
       ORDER BY d.id FOR SHARE OF d, c`);
     const byId = new Map(dishes.map((dish) => [dish.id, dish]));
-    const missing = lines.find((line) => !byId.has(line.dishId));
-    if (missing) {
+    const unavailableIds = [...new Set(lines.map((line) => line.dishId))].filter(
+      (dishId) => !byId.has(dishId),
+    );
+    if (unavailableIds.length) {
+      // Solo se buscan nombres dentro de la sucursal: un platillo ajeno sale sin nombre.
+      const named = await tx.$queryRaw<{ id: string; name: string }[]>(Prisma.sql`
+        SELECT d.id, d.name FROM dishes d
+        WHERE d.branch_id=${branchId}::uuid
+          AND d.id IN (${Prisma.join(unavailableIds.map((id) => Prisma.sql`${id}::uuid`))})`);
+      const nameById = new Map(named.map((dish) => [dish.id, dish.name]));
       throw new ConflictException({
         message: 'Hay platillos no disponibles para esta sucursal.',
-        dishId: missing.dishId,
+        dishId: unavailableIds[0],
+        unavailableDishes: unavailableIds.map((id) => ({
+          id,
+          name: nameById.get(id) ?? null,
+        })),
       });
     }
     return lines.map((line) => {
