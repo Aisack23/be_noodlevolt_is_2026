@@ -7,6 +7,7 @@ import type { INestApplication } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import { UserRole } from '@PrismaClient';
 import type { BranchConfig } from '@PrismaClient';
+import type { NextFunction, Request, Response } from 'express';
 import request from 'supertest';
 import type { CreateOrderDto } from '../../../orders/dto/create-order.dto.js';
 import { OrdersRepository } from '../../../orders/repositories/orders.repository.js';
@@ -143,7 +144,7 @@ describe('HU-11. Actualizar estado operativo de sucursal', () => {
         ],
       }).compile();
       app = module.createNestApplication();
-      app.use((req, _res, next) => {
+      app.use((req: Request, _res: Response, next: NextFunction) => {
         Object.assign(req, { user: actor });
         next();
       });

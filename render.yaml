@@ -4,6 +4,7 @@
 services:
   - type: web
     name: noodlevolt-api
+    branch: main
     runtime: docker
     plan: free
     dockerfilePath: ./Dockerfile
@@ -12,7 +13,7 @@ services:
     # El health check usa el endpoint raíz de la API (exento del 426 de HTTPS).
     healthCheckPath: /api/v1
     # El plan gratuito no tiene pre-deploy command: las migraciones van al arrancar.
-    dockerCommand: sh -c "npx prisma migrate deploy && node dist/main.js"
+    dockerCommand: sh -c "npm run prisma:deploy && exec node dist/main.js"
     envVars:
       - key: NODE_ENV
         value: production

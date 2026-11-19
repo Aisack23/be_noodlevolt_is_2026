@@ -36,7 +36,7 @@ Antes de empezar: el despliegue sale de `main`. La PR de esta guía (y las de `c
 
 1. En Render: **New → Blueprint**, conecta el repo del backend y elige la rama **`main`**. Render lee `render.yaml`.
 2. Render pedirá los valores de las variables marcadas como `sync: false`. Llénalas con la tabla de la sección 2.2.
-3. Crea el servicio. El arranque ejecuta `npx prisma migrate deploy` y luego `node dist/main.js`. En los logs debe aparecer `All migrations have been successfully applied` y `Conectado a PostgreSQL`.
+3. Crea el servicio. El arranque ejecuta `npm run prisma:deploy` y luego `node dist/main.js`. En los logs debe aparecer `All migrations have been successfully applied` y `Conectado a PostgreSQL`.
 
 ### 2.2 Variables de Render
 

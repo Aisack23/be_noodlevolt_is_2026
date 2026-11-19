@@ -2,6 +2,7 @@ import { ForbiddenException, ValidationPipe } from '@nestjs/common';
 import type { INestApplication } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import { Prisma } from '@PrismaClient';
+import type { NextFunction, Request, Response } from 'express';
 import request from 'supertest';
 import { InventoryStockController } from '../controllers/inventory-stock.controller.js';
 import { InventoryStockRepository } from '../repositories/index.js';
@@ -100,7 +101,7 @@ describe('HU-05. Consultar insumos con bajo stock', () => {
     it('AC3 (negativo): rechaza a un rol sin acceso al inventario', async () => {
       await expect(
         service.getInventory(
-          { id: 'waiter', role: 'WAITER' as const, branchId },
+          { role: 'WAITER', branchId },
           undefined,
         ),
       ).rejects.toBeInstanceOf(ForbiddenException);
@@ -123,7 +124,7 @@ describe('HU-05. Consultar insumos con bajo stock', () => {
         ],
       }).compile();
       app = module.createNestApplication();
-      app.use((req, _res, next) => {
+      app.use((req: Request, _res: Response, next: NextFunction) => {
         Object.assign(req, { user: actor });
         next();
       });

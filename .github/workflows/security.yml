@@ -2,9 +2,9 @@ name: Seguridad del backend
 
 on:
   pull_request:
-    branches: [develop]
+    branches: [develop, main]
   push:
-    branches: ['security/**']
+    branches: ['security/**', 'release/**']
 
 permissions:
   contents: read
@@ -48,6 +48,6 @@ jobs:
       - run: npm run build
       - run: npm run lint
       - run: npm test
-      - run: npm run test:security
+      - run: npm run test:e2e
       - run: npm run test:migrations
       - run: npm audit --audit-level=moderate
