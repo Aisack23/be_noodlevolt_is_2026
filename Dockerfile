@@ -41,7 +41,7 @@ RUN npm run build
 # porque el contenedor corre `prisma migrate deploy` al arrancar. `tsx` es
 # devDependency y este prune lo elimina, así que `prisma db seed` no corre dentro
 # de la imagen: el seed se ejecuta desde una máquina de desarrollo (ver
-# docs/06-despliegue.md).
+# docs/despliegue-pasos.md).
 RUN npm prune --omit=dev
 
 # --- Etapa 3: runtime ------------------------------------------------------

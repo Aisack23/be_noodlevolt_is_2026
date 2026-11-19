@@ -1,4 +1,4 @@
-# 06 · Despliegue (entrega final)
+# Despliegue (entrega final)
 
 Arquitectura de producción:
 

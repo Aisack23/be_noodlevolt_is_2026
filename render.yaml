@@ -1,6 +1,6 @@
 # Blueprint de Render para la API (plan gratuito, runtime Docker).
 # No contiene secretos: los valores con `sync: false` se cargan a mano en el
-# panel de Render; JWT_SECRET se genera en Render. Guía: docs/06-despliegue.md.
+# panel de Render; JWT_SECRET se genera en Render. Guía: docs/despliegue-pasos.md.
 services:
   - type: web
     name: noodlevolt-api
