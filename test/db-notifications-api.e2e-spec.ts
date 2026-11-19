@@ -1,3 +1,4 @@
+import { accessTokenFor } from './support/access-token.js';
 import 'dotenv/config';
 import { randomBytes, randomUUID } from 'node:crypto';
 import { Test } from '@nestjs/testing';
@@ -75,9 +76,9 @@ describe('HU-09: cocina y buzón con PostgreSQL real', () => {
       throw error;
     }
     const jwt = module.get(JwtService);
-    tokens = await Promise.all(clients.map((id) => jwt.signAsync({ sub: id })));
+    tokens = await Promise.all(clients.map((id) => accessTokenFor(db!, jwt, id)));
     cookTokens = await Promise.all(
-      cooks.map((id) => jwt.signAsync({ sub: id })),
+      cooks.map((id) => accessTokenFor(db!, jwt, id)),
     );
   });
   beforeEach(async () => {

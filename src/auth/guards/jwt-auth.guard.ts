@@ -7,7 +7,7 @@ import {
 } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { JwtService } from '@nestjs/jwt';
-import { UsersService } from '@Users/services';
+import { RefreshTokenRepository } from '@Auth/repositories';
 import { IS_PUBLIC_KEY } from '../decorators/public.decorator.js';
 import type { RequestWithUser } from '../decorators/current-user.decorator.js';
 import type { AccessTokenPayload } from '@Auth/types';
@@ -32,7 +32,7 @@ export class JwtAuthGuard implements CanActivate {
   constructor(
     @Inject(Reflector) private readonly reflector: Reflector,
     @Inject(JwtService) private readonly jwtService: JwtService,
-    @Inject(UsersService) private readonly usersService: UsersService,
+    @Inject(RefreshTokenRepository) private readonly sessions: RefreshTokenRepository,
   ) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
@@ -57,6 +57,8 @@ export class JwtAuthGuard implements CanActivate {
       if (
         typeof decoded.sub !== 'string' ||
         !isUUID(decoded.sub) ||
+        typeof decoded.sid !== 'string' ||
+        !isUUID(decoded.sid) ||
         !Number.isSafeInteger(decoded.iat) ||
         !Number.isSafeInteger(decoded.exp) ||
         decoded.iat! > Math.floor(Date.now() / 1000) + 5 ||
@@ -74,9 +76,9 @@ export class JwtAuthGuard implements CanActivate {
 
     // Se relee el usuario en cada request para que una cuenta desactivada o
     // eliminada deje de funcionar sin esperar a que expire el token.
-    const user = await this.usersService.findById(payload.sub);
-    if (!user || !user.isActive) {
-      throw new UnauthorizedException('La cuenta no existe o está inactiva.');
+    const user = await this.sessions.findActiveUser(payload.sid, payload.sub);
+    if (!user) {
+      throw new UnauthorizedException('La sesión ya no está activa.');
     }
 
     request.user = user;

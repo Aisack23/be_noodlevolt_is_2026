@@ -1,7 +1,7 @@
 import { Inject, Injectable, UnauthorizedException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
-import { createHash, randomBytes } from 'node:crypto';
+import { createHash, randomBytes, randomUUID } from 'node:crypto';
 import { RefreshTokenRepository } from '@Auth/repositories';
 import type { AccessTokenPayload, TokenPair } from '@Auth/types';
 import type { EnvConfig } from '@Config';
@@ -14,7 +14,7 @@ const REFRESH_TOKEN_BYTES = 32;
 /**
  * Emisión, rotación y revocación de tokens.
  *
- * El access token es un JWT de vida corta y sin estado. El refresh token es un
+ * El access token es un JWT de vida corta vinculado a la sesión. El refresh token es un
  * string opaco persistido: se guarda su SHA-256, no el valor en claro.
  *
  * Por qué SHA-256 y no bcrypt para el refresh token: son 32 bytes aleatorios,
@@ -43,9 +43,11 @@ export class TokenService {
   async issueTokenPair(
     user: User,
     tx?: Prisma.TransactionClient,
+    familyId?: string,
   ): Promise<TokenPair> {
     const payload: AccessTokenPayload = {
       sub: user.id,
+      sid: randomUUID(),
       email: user.email,
       role: user.role,
       branchId: user.branchId,
@@ -55,6 +57,8 @@ export class TokenService {
     const refreshToken = randomBytes(REFRESH_TOKEN_BYTES).toString('hex');
 
     const stored = {
+      id: payload.sid,
+      familyId: familyId ?? payload.sid,
       tokenHash: this.hashToken(refreshToken),
       userId: user.id,
       expiresAt: new Date(Date.now() + this.refreshTokenTtlMs),
@@ -65,6 +69,7 @@ export class TokenService {
     return {
       accessToken,
       refreshToken,
+      refreshExpiresAt: stored.expiresAt.toISOString(),
       expiresIn: await this.getAccessTokenTtlSeconds(accessToken),
     };
   }
@@ -73,15 +78,14 @@ export class TokenService {
    * Canjea un refresh token por un par nuevo (rotación).
    *
    * Incluye detección de reúso: si llega un token que ya fue canjeado, se
-   * asume que fue robado y se revocan sus refresh tokens. Los JWT de acceso
-   * ya emitidos conservan su vigencia corta hasta expirar.
+   * asume que fue robado y se revocan sus refresh tokens. Los JWT de acceso asociados también quedan invalidados.
    */
   async rotate(
     refreshToken: string,
   ): Promise<{ user: User; tokens: TokenPair }> {
     const result = await this.refreshTokenRepository.rotate(
       this.hashToken(refreshToken),
-      (user, tx) => this.issueTokenPair(user, tx),
+      (user, tx, familyId) => this.issueTokenPair(user, tx, familyId),
     );
     if (result.kind === 'rotated')
       return { user: result.user, tokens: result.value };
@@ -95,7 +99,7 @@ export class TokenService {
   }
 
   /**
-   * Revoca un refresh token puntual (logout).
+   * Revoca todos los tokens de la sesión (logout).
    *
    * Es idempotente a propósito: un logout con un token ya inválido igual
    * responde 204, así no se convierte en un oráculo para descubrir qué tokens

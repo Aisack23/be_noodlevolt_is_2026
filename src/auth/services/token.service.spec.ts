@@ -63,6 +63,7 @@ describe('TokenService - claims de rol y sucursal', () => {
 
     expect(signAsync).toHaveBeenCalledWith({
       sub: userId,
+      sid: expect.any(String),
       email: 'mesero@noodlevolt.com',
       role: 'WAITER',
       branchId,
@@ -98,6 +99,7 @@ describe('TokenService - claims de rol y sucursal', () => {
 
     expect(signAsync).toHaveBeenCalledWith({
       sub: userId,
+      sid: expect.any(String),
       email: 'cliente@noodlevolt.com',
       role: 'CLIENT',
       branchId: null,
@@ -117,6 +119,7 @@ describe('TokenService - claims de rol y sucursal', () => {
 
     expect(signAsync).toHaveBeenCalledWith({
       sub: userId,
+      sid: expect.any(String),
       email: 'gerencia@noodlevolt.com',
       role: 'GENERAL_MANAGER',
       branchId: null,

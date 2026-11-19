@@ -13,6 +13,7 @@ export interface EnvConfig {
   PORT: number;
   DATABASE_URL: string;
   JWT_SECRET: string;
+  CRON_SECRET: string;
   JWT_EXPIRES_IN: string;
   REFRESH_TOKEN_EXPIRES_IN_DAYS: number;
   BCRYPT_SALT_ROUNDS: number;
@@ -119,6 +120,10 @@ export function validateEnv(raw: Record<string, unknown>): EnvConfig {
     );
   }
 
+  const cronSecret = readString(raw, 'CRON_SECRET', '');
+  if (cronSecret && (!/^[A-Za-z0-9_+/=-]{32,128}$/.test(cronSecret) || new Set(cronSecret).size < 8 || cronSecret === jwtSecret))
+    throw new Error('CRON_SECRET debe ser un secreto aleatorio y distinto de JWT_SECRET.');
+
   const mode = readString(raw, 'NODE_ENV', 'development');
   if (!['development', 'test', 'production'].includes(mode))
     throw new Error('NODE_ENV debe ser development, test o production.');
@@ -162,6 +167,7 @@ export function validateEnv(raw: Record<string, unknown>): EnvConfig {
     PORT: readInt(raw, 'PORT', 3000, 1, 65535),
     DATABASE_URL: databaseUrl,
     JWT_SECRET: jwtSecret,
+    CRON_SECRET: cronSecret,
     JWT_EXPIRES_IN: accessTokenTtl(raw),
     REFRESH_TOKEN_EXPIRES_IN_DAYS: readInt(
       raw,

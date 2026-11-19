@@ -1,3 +1,4 @@
+import { accessTokenFor } from './support/access-token.js';
 import 'dotenv/config';
 import { randomBytes, randomUUID } from 'node:crypto';
 import { ValidationPipe } from '@nestjs/common';
@@ -92,7 +93,7 @@ describe('BE-02: pedidos propios contra PostgreSQL', () => {
   }
 
   function tokenFor(userId: string) {
-    return jwt.sign({ sub: userId });
+    return accessTokenFor(client, jwt, userId);
   }
 
   beforeAll(async () => {
@@ -172,7 +173,7 @@ describe('BE-02: pedidos propios contra PostgreSQL', () => {
 
     const response = await request(app.getHttpServer())
       .get('/api/v1/orders/me')
-      .set('Authorization', `Bearer ${tokenFor(customerA)}`)
+      .set('Authorization', `Bearer ${await tokenFor(customerA)}`)
       .expect(200);
 
     expect(response.body).toHaveLength(2);
@@ -204,7 +205,7 @@ describe('BE-02: pedidos propios contra PostgreSQL', () => {
 
     const response = await request(app.getHttpServer())
       .get('/api/v1/orders/me')
-      .set('Authorization', `Bearer ${tokenFor(customer)}`)
+      .set('Authorization', `Bearer ${await tokenFor(customer)}`)
       .expect(200);
 
     expect(response.body).toEqual([]);
@@ -219,7 +220,7 @@ describe('BE-02: pedidos propios contra PostgreSQL', () => {
     const response = await request(app.getHttpServer())
       .get('/api/v1/orders/me')
       .query({ status: 'PENDING' })
-      .set('Authorization', `Bearer ${tokenFor(customer)}`)
+      .set('Authorization', `Bearer ${await tokenFor(customer)}`)
       .expect(200);
 
     expect(response.body).toHaveLength(1);
@@ -237,7 +238,7 @@ describe('BE-02: pedidos propios contra PostgreSQL', () => {
     await request(app.getHttpServer())
       .get('/api/v1/orders/me')
       .query({ status: 'INVALID' })
-      .set('Authorization', `Bearer ${tokenFor(customer)}`)
+      .set('Authorization', `Bearer ${await tokenFor(customer)}`)
       .expect(400);
   });
 
@@ -257,7 +258,7 @@ describe('BE-02: pedidos propios contra PostgreSQL', () => {
       ]);
       const response = await request(app.getHttpServer())
         .get('/api/v1/orders/me')
-        .set('Authorization', `Bearer ${tokenFor(customer)}`)
+        .set('Authorization', `Bearer ${await tokenFor(customer)}`)
         .expect(200);
       expect(response.body).toHaveLength(1);
       expect(response.body[0]).toMatchObject({ id: orderId, total: expected });
@@ -273,7 +274,7 @@ describe('BE-02: pedidos propios contra PostgreSQL', () => {
 
     await request(app.getHttpServer())
       .get('/api/v1/orders/me')
-      .set('Authorization', `Bearer ${tokenFor(waiter)}`)
+      .set('Authorization', `Bearer ${await tokenFor(waiter)}`)
       .expect(403);
   });
 });

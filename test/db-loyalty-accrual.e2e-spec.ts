@@ -1,3 +1,4 @@
+import { accessTokenFor } from './support/access-token.js';
 import 'dotenv/config';
 import { randomUUID } from 'node:crypto';
 import { ValidationPipe, type INestApplication } from '@nestjs/common';
@@ -67,10 +68,8 @@ describe(
     beforeEach(async () => {
       customerId = await createUser();
       otherCustomerId = await createUser();
-      token = await module.get(JwtService).signAsync({ sub: customerId });
-      otherToken = await module
-        .get(JwtService)
-        .signAsync({ sub: otherCustomerId });
+      token = await accessTokenFor(client, module.get(JwtService), customerId);
+      otherToken = await accessTokenFor(client, module.get(JwtService), otherCustomerId);
     });
     afterAll(async () => {
       if (app) await app.close();
@@ -302,9 +301,7 @@ describe(
       'BRANCH_ADMIN',
       'GENERAL_MANAGER',
     ])('rechaza el rol %s', async (role) => {
-      const staffToken = await module
-        .get(JwtService)
-        .signAsync({ sub: await createUser(role) });
+      const staffToken = await accessTokenFor(client, module.get(JwtService), await createUser(role));
       await balance(staffToken).expect(403);
     });
     it.each(['sin cliente', 'cancelado', 'otra sucursal', 'pendiente'])(

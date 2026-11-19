@@ -5,6 +5,7 @@ import {
   Inject,
   Param,
   ParseUUIDPipe,
+  Patch,
   Post,
   Query,
   BadRequestException,
@@ -13,6 +14,8 @@ import {
   ApiBadRequestResponse,
   ApiBearerAuth,
   ApiConflictResponse,
+  ApiExtraModels,
+  getSchemaPath,
   ApiCreatedResponse,
   ApiForbiddenResponse,
   ApiNotFoundResponse,
@@ -22,13 +25,17 @@ import {
   ApiTags,
   ApiUnauthorizedResponse,
 } from '@nestjs/swagger';
+import {
+  AdministrativeReservationDto, OperationalReservationDto, ReservationCancellationDto,
+} from '../dto/branch-reservation.dto.js';
 import { CurrentUser } from '@Auth/decorators';
-import type { User, Reservation } from '@PrismaClient';
+import type { User } from '@PrismaClient';
 import { CreateReservationDto } from '../dto/create-reservation.dto.js';
 import { ReservationResponseDto } from '../dto/reservation-response.dto.js';
 import { ReservationBookingService } from '../services/reservation-booking.service.js';
 
 @ApiTags('reservations')
+@ApiExtraModels(AdministrativeReservationDto, OperationalReservationDto)
 @ApiBearerAuth()
 @Controller('reservations')
 export class ReservationBookingController {
@@ -72,7 +79,10 @@ export class ReservationBookingController {
     description: 'Fecha en formato YYYY-MM-DD',
     example: '2026-11-16',
   })
-  @ApiOkResponse({ type: [ReservationResponseDto] })
+  @ApiOkResponse({ schema: { oneOf: [
+    { type: 'array', items: { $ref: getSchemaPath(AdministrativeReservationDto) } },
+    { type: 'array', items: { $ref: getSchemaPath(OperationalReservationDto) } },
+  ] } })
   @ApiUnauthorizedResponse({ description: 'Se requiere sesión válida.' })
   @ApiForbiddenResponse({
     description: 'Se requiere personal autorizado de la sucursal.',
@@ -81,12 +91,21 @@ export class ReservationBookingController {
     @CurrentUser() actor: User,
     @Param('branchId', new ParseUUIDPipe()) branchId: string,
     @Query('date') date: string,
-  ): Promise<Reservation[]> {
+  ) {
     if (!date) {
       throw new BadRequestException(
         'El parámetro de consulta "date" es obligatorio.',
       );
     }
     return this.service.findByBranchAndDate(actor, branchId, date);
+  }
+
+  @Patch(':id/cancel')
+  @ApiOkResponse({ type: ReservationCancellationDto })
+  @ApiForbiddenResponse({ description: 'Se requiere gerencia autorizada.' })
+  @ApiNotFoundResponse({ description: 'Reserva inexistente o fuera de alcance.' })
+  @ApiConflictResponse({ description: 'Estado incompatible con cancelación.' })
+  cancel(@CurrentUser() actor: User, @Param('id', ParseUUIDPipe) id: string) {
+    return this.service.cancel(actor, id);
   }
 }

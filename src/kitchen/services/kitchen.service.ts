@@ -33,6 +33,11 @@ export class KitchenService {
     return (await this.orders.findKitchenQueue(branchId)).map(toResponse);
   }
 
+  async listForSupervision(actor: KitchenActor): Promise<KitchenOrderResponseDto[]> {
+    const branchId = this.requireBranch(actor, UserRole.BRANCH_ADMIN);
+    return (await this.orders.findKitchenQueue(branchId)).map(toResponse);
+  }
+
   async listReady(actor: KitchenActor): Promise<KitchenOrderResponseDto[]> {
     const branchId = this.requireBranch(actor, UserRole.WAITER);
     return (await this.orders.findReadyQueue(branchId)).map(toResponse);

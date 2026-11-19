@@ -7,6 +7,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import type { CreateReservationDto } from '../dto/create-reservation.dto.js';
+import type { ReservationCancellationDto } from '../dto/branch-reservation.dto.js';
 import type { ReservationResponseDto } from '../dto/reservation-response.dto.js';
 import {
   ReservationBranchUnavailableError,
@@ -15,7 +16,7 @@ import {
 } from '../errors/reservation-booking.errors.js';
 import { ReservationBookingRepository } from '../repositories/reservation-booking.repository.js';
 import { ReservationRepository } from '../repositories/reservation.repository.js';
-import type { Reservation, User } from '@PrismaClient';
+import type { User } from '@PrismaClient';
 
 type StaffActor = Pick<User, 'role' | 'branchId'>;
 const internalStaffRoles = new Set<string>([
@@ -67,48 +68,32 @@ export class ReservationBookingService {
       throw error;
     }
   }
-  async findByBranch(actor: StaffActor, branchId: string): Promise<Reservation[]> {
-    const isStaff = internalStaffRoles.has(actor.role);
+  async findByBranchAndDate(actor: StaffActor, branchId: string, date: string) {
+    if (!internalStaffRoles.has(actor.role))
+      throw new ForbiddenException('No tienes permisos para ver las reservaciones.');
+    if (actor.role !== 'GENERAL_MANAGER' && actor.branchId?.toLowerCase() !== branchId.toLowerCase())
+      throw new ForbiddenException('No tienes acceso a las reservaciones de esta sucursal.');
 
-    if (isStaff) {
-      if (
-        actor.role !== 'GENERAL_MANAGER' &&
-        actor.branchId?.toLowerCase() !== branchId.toLowerCase()
-      ) {
-        throw new ForbiddenException(
-          'Se requiere personal autorizado de la sucursal.',
-        );
-      }
-    } else {
-      throw new ForbiddenException('No tienes permisos para ver las reservaciones de esta sucursal.');
-    }
-    return this.reservationRepository.findByBranch(branchId);
+    const parsed = new Date(`${date}T00:00:00Z`);
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(date) || !Number.isFinite(parsed.getTime()) ||
+        parsed.toISOString().slice(0, 10) !== date || date.startsWith('0000-'))
+      throw new BadRequestException('Utiliza una fecha válida en formato YYYY-MM-DD.');
+
+    const results = await this.reservationRepository.listDaily(
+      branchId, date, actor.role === 'GENERAL_MANAGER' || actor.role === 'BRANCH_ADMIN',
+    );
+    if (!results) throw new NotFoundException('La sucursal no existe.');
+    return results;
   }
 
-  async findByBranchAndDate(
-    actor: { id: string; role: string; branchId?: string | null },
-    branchId: string,
-    dateQuery: string, 
-  ): Promise<Reservation[]> {
-
-    if (!internalStaffRoles.has(actor.role)) {
-      throw new ForbiddenException('No tienes permisos para ver las reservaciones.');
-    }
-
-    if (
-      actor.role !== 'GENERAL_MANAGER' &&
-      actor.branchId?.toLowerCase() !== branchId.toLowerCase()
-    ) {
-      throw new ForbiddenException('No tienes acceso a las reservaciones de esta sucursal.');
-    }
-
-    const startsAt = new Date(`${dateQuery}T00:00:00-06:00`);
-    const endsAt = new Date(`${dateQuery}T23:59:59-06:00`);
-
-    if (!Number.isFinite(startsAt.getTime()) || !Number.isFinite(endsAt.getTime())) {
-      throw new BadRequestException('El formato de la fecha es inválido. Utiliza YYYY-MM-DD.');
-    }
-
-    return this.reservationRepository.findByDateRange(branchId, startsAt, endsAt);
+  async cancel(actor: StaffActor & { id: string }, id: string): Promise<ReservationCancellationDto> {
+    if (actor.role !== 'GENERAL_MANAGER' && (actor.role !== 'BRANCH_ADMIN' || !actor.branchId))
+      throw new ForbiddenException('No tienes permiso para cancelar reservaciones.');
+    const result = await this.reservationRepository.cancel(
+      id, actor.id, actor.role === 'GENERAL_MANAGER' ? undefined : actor.branchId!,
+    );
+    if (result === null) throw new NotFoundException('La reservación no existe.');
+    if (result !== 'CANCELED') throw new ConflictException('La reservación ya no se puede cancelar.');
+    return { id, status: 'CANCELED' };
   }
 }

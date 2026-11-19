@@ -11,7 +11,7 @@ import { APP_GUARD, Reflector } from '@nestjs/core';
 import { JwtService } from '@nestjs/jwt';
 import request from 'supertest';
 import { JwtAuthGuard } from '@Auth/guards';
-import type { UsersService } from '@Users/services';
+import type { RefreshTokenRepository } from '@Auth/repositories';
 import { OrdersController } from '../controllers/orders.controller.js';
 import { OrdersRepository } from '../repositories/orders.repository.js';
 import { OrdersService } from './orders.service.js';
@@ -21,7 +21,6 @@ import { normalizeOrder, orderRequestHash } from './order-request.js';
 vi.mock('../repositories/orders.repository.js', () => ({
   OrdersRepository: class {},
 }));
-vi.mock('@Users/services', () => ({ UsersService: class {} }));
 
 const customerId = '10000000-0000-4000-8000-000000000001';
 const input = {
@@ -40,7 +39,7 @@ const order = {
 
 describe('BE-02: pedidos', () => {
   const repository = { create: vi.fn() };
-  const users = { findById: vi.fn() };
+  const sessions = { findActiveUser: vi.fn() };
   const jwt = new JwtService({
     secret: randomBytes(32).toString('hex'),
     signOptions: {
@@ -64,7 +63,7 @@ describe('BE-02: pedidos', () => {
           useValue: new JwtAuthGuard(
             new Reflector(),
             jwt,
-            users as unknown as UsersService,
+            sessions as unknown as RefreshTokenRepository,
           ),
         },
       ],
@@ -80,11 +79,11 @@ describe('BE-02: pedidos', () => {
       }),
     );
     await app.init();
-    token = await jwt.signAsync({ sub: customerId });
+    token = await jwt.signAsync({ sub: customerId, sid: '00000000-0000-4000-8000-000000000001' });
   });
   beforeEach(() => {
     vi.resetAllMocks();
-    users.findById.mockResolvedValue({
+    sessions.findActiveUser.mockResolvedValue({
       id: customerId,
       role: 'CLIENT',
       isActive: true,
@@ -129,7 +128,7 @@ describe('BE-02: pedidos', () => {
       .expect(401);
   });
   it('rechaza token vencido', async () => {
-    const expired = await jwt.signAsync({ sub: customerId }, { expiresIn: -1 });
+    const expired = await jwt.signAsync({ sub: customerId, sid: '00000000-0000-4000-8000-000000000001' }, { expiresIn: -1 });
     await request(app.getHttpServer())
       .post('/api/v1/orders')
       .set('Authorization', `Bearer ${expired}`)
@@ -137,7 +136,7 @@ describe('BE-02: pedidos', () => {
       .expect(401);
   });
   it('rechaza al personal aunque tenga JWT válido', async () => {
-    users.findById.mockResolvedValue({
+    sessions.findActiveUser.mockResolvedValue({
       id: customerId,
       role: 'BRANCH_ADMIN',
       isActive: true,

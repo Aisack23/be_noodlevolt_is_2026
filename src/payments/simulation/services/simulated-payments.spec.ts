@@ -12,7 +12,7 @@ import { APP_GUARD, Reflector } from '@nestjs/core';
 import { JwtService } from '@nestjs/jwt';
 import request from 'supertest';
 import { JwtAuthGuard } from '@Auth/guards';
-import type { UsersService } from '@Users/services';
+import type { RefreshTokenRepository } from '@Auth/repositories';
 import { SimulatedPaymentsController } from '../controllers/simulated-payments.controller.js';
 import { SimulatedPaymentsRepository } from '../repositories/simulated-payments.repository.js';
 import { SimulatedPaymentsService } from './simulated-payments.service.js';
@@ -21,7 +21,6 @@ import { TestCardGateway } from './test-card-gateway.js';
 vi.mock('../repositories/simulated-payments.repository.js', () => ({
   SimulatedPaymentsRepository: class {},
 }));
-vi.mock('@Users/services', () => ({ UsersService: class {} }));
 
 const customerId = '10000000-0000-4000-8000-000000000001';
 const orderId = '20000000-0000-4000-8000-000000000001';
@@ -44,7 +43,7 @@ const result = {
 
 describe('BE-06: simulación con JWT real y persistencia simulada', () => {
   const repository = { requirePayable: vi.fn(), record: vi.fn() };
-  const users = { findById: vi.fn() };
+  const sessions = { findActiveUser: vi.fn() };
   const gateway = { authorize: vi.fn() };
   const jwt = new JwtService({
     secret: randomBytes(32).toString('hex'),
@@ -69,7 +68,7 @@ describe('BE-06: simulación con JWT real y persistencia simulada', () => {
           useValue: new JwtAuthGuard(
             new Reflector(),
             jwt,
-            users as unknown as UsersService,
+            sessions as unknown as RefreshTokenRepository,
           ),
         },
       ],
@@ -84,11 +83,11 @@ describe('BE-06: simulación con JWT real y persistencia simulada', () => {
       }),
     );
     await app.init();
-    token = await jwt.signAsync({ sub: customerId });
+    token = await jwt.signAsync({ sub: customerId, sid: '00000000-0000-4000-8000-000000000001' });
   });
   beforeEach(() => {
     vi.resetAllMocks();
-    users.findById.mockResolvedValue({
+    sessions.findActiveUser.mockResolvedValue({
       id: customerId,
       role: 'CLIENT',
       isActive: true,
@@ -161,7 +160,7 @@ describe('BE-06: simulación con JWT real y persistencia simulada', () => {
     await post(input, 'invalid').expect(401);
   });
   it('rechaza al personal', async () => {
-    users.findById.mockResolvedValue({
+    sessions.findActiveUser.mockResolvedValue({
       id: customerId,
       role: 'COOK',
       isActive: true,

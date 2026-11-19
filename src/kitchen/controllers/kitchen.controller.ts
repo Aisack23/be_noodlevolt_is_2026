@@ -57,6 +57,13 @@ export class KitchenController {
     return this.kitchen.list(user);
   }
 
+  @Get('supervision')
+  @ApiOperation({ summary: 'Cola de solo lectura para gerencia de la sucursal.' })
+  @ApiOkResponse({ type: [KitchenOrderResponseDto] })
+  supervise(@CurrentUser() actor: User) {
+    return this.kitchen.listForSupervision(actor);
+  }
+
   @Get('ready')
   @ApiOperation({
     summary: 'Lista pedidos listos para el mesero de la sucursal.',

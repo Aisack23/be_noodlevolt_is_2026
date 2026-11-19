@@ -7,7 +7,7 @@ import { APP_GUARD, Reflector } from '@nestjs/core';
 import { JwtService } from '@nestjs/jwt';
 import request from 'supertest';
 import { JwtAuthGuard } from '@Auth/guards';
-import type { UsersService } from '@Users/services';
+import type { RefreshTokenRepository } from '@Auth/repositories';
 import { ReservationBookingController } from '../controllers/reservation-booking.controller.js';
 import { ReservationBookingRepository } from '../repositories/reservation-booking.repository.js';
 import { ReservationRepository } from '../repositories/reservation.repository.js';
@@ -16,7 +16,6 @@ import { ReservationBookingService } from './reservation-booking.service.js';
 vi.mock('../repositories/reservation-booking.repository.js', () => ({
   ReservationBookingRepository: class {},
 }));
-vi.mock('@Users/services', () => ({ UsersService: class {} }));
 const userId = '10000000-0000-4000-8000-000000000001';
 const payload = () => ({
   branchId: '20000000-0000-4000-8000-000000000001',
@@ -28,7 +27,7 @@ const payload = () => ({
 
 describe('BE-04: HTTP, sesión y validaciones', () => {
   const repository = { book: vi.fn() };
-  const users = { findById: vi.fn() };
+  const sessions = { findActiveUser: vi.fn() };
   const jwt = new JwtService({
     secret: randomBytes(32).toString('hex'),
     signOptions: {
@@ -51,7 +50,7 @@ describe('BE-04: HTTP, sesión y validaciones', () => {
           useValue: new JwtAuthGuard(
             new Reflector(),
             jwt,
-            users as unknown as UsersService,
+            sessions as unknown as RefreshTokenRepository,
           ),
         },
       ],
@@ -66,11 +65,11 @@ describe('BE-04: HTTP, sesión y validaciones', () => {
       }),
     );
     await app.init();
-    token = await jwt.signAsync({ sub: userId });
+    token = await jwt.signAsync({ sub: userId, sid: '00000000-0000-4000-8000-000000000001' });
   });
   beforeEach(() => {
     vi.resetAllMocks();
-    users.findById.mockResolvedValue({
+    sessions.findActiveUser.mockResolvedValue({
       id: userId,
       role: 'CLIENT',
       isActive: true,
@@ -104,7 +103,7 @@ describe('BE-04: HTTP, sesión y validaciones', () => {
       .expect(401);
   });
   it('rechaza rol distinto de cliente sin consultar datos', async () => {
-    users.findById.mockResolvedValue({
+    sessions.findActiveUser.mockResolvedValue({
       id: userId,
       role: 'COOK',
       isActive: true,

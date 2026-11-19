@@ -1,19 +1,3 @@
-/** Payload que viaja dentro del JWT de acceso. 
-export interface AccessTokenPayload {
-  /** ID del usuario (claim estándar `sub`). 
-  sub: string;
-  email: string;
-}
-
-/** Par de tokens devuelto por login y refresh. 
-export interface TokenPair {
-  accessToken: string;
-  refreshToken: string;
-  /** Vigencia del access token, en segundos. 
-  expiresIn: number;
-}*/
-
-
 import type { UserRole } from '@PrismaClient';
 
 /**
@@ -27,6 +11,7 @@ import type { UserRole } from '@PrismaClient';
 export interface AccessTokenPayload {
   /** Identificador del usuario. */
   sub: string;
+  sid: string;
 
   /** Correo electrónico del usuario. */
   email: string;
@@ -42,6 +27,7 @@ export interface AccessTokenPayload {
 export interface TokenPair {
   accessToken: string;
   refreshToken: string;
+  refreshExpiresAt: string;
 
   /** Vigencia del access token, en segundos. */
   expiresIn: number;

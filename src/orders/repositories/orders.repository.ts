@@ -7,6 +7,7 @@ import {
 } from '@nestjs/common';
 import { PrismaService } from '@Prisma/services';
 import { Prisma } from '@PrismaClient';
+import { IngredientAvailabilityRepository } from '../../inventory/stock/repositories/ingredient-availability.repository.js';
 import type { CreateOrderDto } from '../dto/create-order.dto.js';
 import type { CreateSalonOrderDto } from '../dto/create-salon-order.dto.js';
 import type { OrderResponseDto } from '../dto/order-response.dto.js';
@@ -73,7 +74,10 @@ type StoredSalonOrder = Prisma.OrderGetPayload<{ select: typeof salonOrderSelect
 
 @Injectable()
 export class OrdersRepository {
-  constructor(@Inject(PrismaService) private readonly prisma: PrismaService) {}
+  constructor(
+    @Inject(PrismaService) private readonly prisma: PrismaService,
+    @Inject(IngredientAvailabilityRepository) private readonly ingredients: IngredientAvailabilityRepository,
+  ) {}
 
   create(
     customerId: string,
@@ -101,6 +105,7 @@ export class OrdersRepository {
         }
         await this.requireOpenBranch(tx, input.branchId);
         const lines = await this.priceLines(tx, input);
+        await this.requireIngredients(tx, input.branchId, lines);
         const total = lines.reduce(
           (sum, line) => sum.add(line.unitPrice.mul(line.quantity)),
           new Prisma.Decimal(0),
@@ -194,6 +199,7 @@ export class OrdersRepository {
         }));
 
       const lines = await this.priceSalonLines(tx, branchId, normalized.lines);
+      await this.requireIngredients(tx, branchId, lines);
       const total = lines.reduce(
         (sum, line) => sum.add(line.unitPrice.mul(line.quantity)),
         new Prisma.Decimal(0),
@@ -238,6 +244,17 @@ export class OrdersRepository {
       SELECT is_open AS "isOpen" FROM branch_configs WHERE branch_id=${branchId}::uuid FOR SHARE`);
     if (!configs[0]?.isOpen)
       throw new ConflictException('La sucursal no acepta pedidos.');
+  }
+
+  private async requireIngredients(
+    tx: Prisma.TransactionClient,
+    branchId: string,
+    lines: { dishId: string; quantity: number }[],
+  ) {
+    const dishId = await this.ingredients.unavailableDish(tx, branchId, lines);
+    if (dishId) {
+      throw new ConflictException({ message: 'No hay insumos suficientes para el pedido.', dishId });
+    }
   }
 
   private async priceLines(

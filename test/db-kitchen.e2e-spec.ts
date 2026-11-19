@@ -1,3 +1,4 @@
+import { accessTokenFor } from './support/access-token.js';
 import 'dotenv/config';
 import { randomUUID } from 'node:crypto';
 import { ValidationPipe, type INestApplication } from '@nestjs/common';
@@ -35,6 +36,7 @@ describe('BE-03: cocina y entrega contra PostgreSQL', () => {
   let app: INestApplication;
   let client: Client;
   let jwt: JwtService;
+  const actorTokens = new Map<string, string>();
   const branches = [randomUUID(), randomUUID()];
   const dishes = [randomUUID(), randomUUID()];
   const categories = [randomUUID(), randomUUID()];
@@ -48,7 +50,7 @@ describe('BE-03: cocina y entrega contra PostgreSQL', () => {
   const base = '/api/v1/kitchen/orders';
 
   function token(id: string) {
-    return jwt.sign({ sub: id });
+    return actorTokens.get(id)!;
   }
   function get(path: string, actor = actors.COOK) {
     return request(app.getHttpServer())
@@ -183,6 +185,7 @@ describe('BE-03: cocina y entrega contra PostgreSQL', () => {
     );
     await app.init();
     jwt = module.get(JwtService);
+    await Promise.all(userIds.map(async (id) => actorTokens.set(id, await accessTokenFor(client, jwt, id))));
   }, 20000);
 
   afterEach(async () => {
@@ -584,6 +587,7 @@ describe('BE-03: cocina y entrega contra PostgreSQL', () => {
       [actor, `${actor}@example.com`, branches[0]],
     );
     userIds.push(actor);
+    actorTokens.set(actor, await accessTokenFor(client, jwt, actor));
     await patch(id, 'IN_PREPARATION', actor).expect(200);
     await client.query('DELETE FROM users WHERE id=$1', [actor]);
     const state = await snapshot(id);

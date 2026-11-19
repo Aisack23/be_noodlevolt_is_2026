@@ -1,3 +1,4 @@
+import { accessTokenFor } from './support/access-token.js';
 import 'dotenv/config';
 import { randomBytes, randomUUID } from 'node:crypto';
 import { Test } from '@nestjs/testing';
@@ -69,8 +70,8 @@ describe('BE-02: creación transaccional de pedidos', () => {
       throw error;
     }
     const jwt = module.get(JwtService);
-    token = await jwt.signAsync({ sub: customerId });
-    otherToken = await jwt.signAsync({ sub: otherCustomerId });
+    token = await accessTokenFor(client!, jwt, customerId);
+    otherToken = await accessTokenFor(client!, jwt, otherCustomerId);
   });
 
   beforeEach(async () => {
