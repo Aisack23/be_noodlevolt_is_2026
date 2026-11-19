@@ -391,7 +391,7 @@ model Order {
   accountId            String?   @map("account_id") @db.Uuid
   customerId           String?   @map("customer_id") @db.Uuid
   waiterId             String?   @map("waiter_id") @db.Uuid
-  orderNumber          String?   @map("order_number") @db.VarChar(30)
+  orderNumber          String    @default(dbgenerated("('ORD-'::text || lpad((nextval('order_number_seq'::regclass))::text, 6, '0'::text))")) @map("order_number") @db.VarChar(30)
   type                 OrderType
   recipientName        String?   @map("recipient_name")
   recipientPhone       String?   @map("recipient_phone")

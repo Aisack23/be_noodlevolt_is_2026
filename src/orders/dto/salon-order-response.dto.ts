@@ -21,8 +21,8 @@ export class SalonOrderResponseDto {
   @ApiProperty({ format: 'uuid' })
   id!: string;
 
-  @ApiProperty({ type: String, nullable: true, description: 'Se deja nulo, no se genera número visible.'})
-  orderNumber!: string | null;
+  @ApiProperty({ example: 'ORD-000001', description: 'Número legible asignado al crear el pedido.' })
+  orderNumber!: string;
 
   @ApiProperty({ enum: ['PENDING', 'CONFIRMED', 'IN_PREPARATION', 'READY', 'DELIVERED', 'CANCELED'] })
   status!: string;

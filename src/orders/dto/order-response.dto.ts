@@ -40,6 +40,9 @@ export class OrderResponseDto {
   @ApiProperty({ format: 'uuid' })
   id!: string;
 
+  @ApiProperty({ example: 'ORD-000001' })
+  orderNumber!: string;
+
   @ApiProperty({ format: 'uuid' })
   branchId!: string;
 

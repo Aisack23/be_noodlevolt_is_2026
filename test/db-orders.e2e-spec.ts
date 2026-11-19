@@ -126,6 +126,7 @@ describe('BE-02: creación transaccional de pedidos', () => {
       const start = Date.now();
       const response = await post({ ...body(), paymentMode }).expect(201);
       expect(response.body).toMatchObject({
+        orderNumber: expect.stringMatching(/^ORD-\d{6}$/),
         status: 'PENDING',
         paymentMode,
         total: '17.00',

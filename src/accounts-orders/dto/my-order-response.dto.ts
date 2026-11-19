@@ -12,8 +12,8 @@ export class MyOrderResponseDto {
   @ApiProperty({ format: 'uuid' })
   id!: string;
 
-  @ApiProperty({ type: String, nullable: true, example: 'ORD-1001' })
-  orderNumber!: string | null;
+  @ApiProperty({ example: 'ORD-000001' })
+  orderNumber!: string;
 
   @ApiProperty({ enum: ['PENDING_PAYMENT', 'PENDING', 'CONFIRMED', 'IN_PREPARATION', 'READY', 'DELIVERED', 'CANCELED'] })
   status!: string;

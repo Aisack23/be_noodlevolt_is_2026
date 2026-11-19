@@ -35,7 +35,7 @@ describe('ReviewsService', () => {
     accountId: null,
     customerId: user.id,
     waiterId: null,
-    orderNumber: null,
+    orderNumber: 'ORD-000001',
     type: 'DINE_IN',
     recipientName: null,
     recipientPhone: null,

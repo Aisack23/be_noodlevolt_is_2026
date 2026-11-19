@@ -27,7 +27,7 @@ Authorization: Bearer <accessToken>
 [
   {
     "id": "11111111-1111-4111-8111-111111111111",
-    "orderNumber": "ORD-2026-001",
+    "orderNumber": "ORD-000001",
     "status": "DELIVERED",
     "total": "125.50",
     "createdAt": "2026-11-06T22:00:00.000Z",
@@ -40,7 +40,7 @@ Authorization: Bearer <accessToken>
   },
   {
     "id": "33333333-3333-4333-8333-333333333333",
-    "orderNumber": "ORD-2026-002",
+    "orderNumber": "ORD-000002",
     "status": "PENDING",
     "total": "89.00",
     "createdAt": "2026-11-05T20:00:00.000Z",

@@ -16,7 +16,7 @@ import { PrismaService } from '@Prisma/services';
 
 export interface CustomerOrderListRow {
   id: string;
-  orderNumber: string | null;
+  orderNumber: string;
   status: OrderStatus;
   total: Prisma.Decimal | null;
   createdAt: Date;
@@ -32,7 +32,7 @@ export interface CreateOrderData {
   accountId?: string | null;
   customerId?: string | null;
   waiterId?: string | null;
-  orderNumber?: string | null;
+  orderNumber?: string;
   type: OrderType;
   recipientName?: string | null;
   recipientPhone?: string | null;
@@ -48,7 +48,7 @@ export interface UpdateOrderData {
   accountId?: string | null;
   customerId?: string | null;
   waiterId?: string | null;
-  orderNumber?: string | null;
+  orderNumber?: string;
   recipientName?: string | null;
   recipientPhone?: string | null;
   deliveryAddress?: string | null;
@@ -60,7 +60,7 @@ export interface UpdateOrderData {
 export interface KitchenOrderRow {
   id: string;
   branchId: string;
-  orderNumber: string | null;
+  orderNumber: string;
   type: OrderType;
   status: OrderStatus;
   createdAt: Date;
