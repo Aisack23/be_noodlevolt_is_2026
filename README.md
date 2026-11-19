@@ -10,10 +10,10 @@ Equipo: **Elektro**.
 
 | Componente | Plataforma | URL | Rama |
 |---|---|---|---|
-| Frontend (Next.js) | Vercel | [pendiente] | `main` |
-| Backend (NestJS) | Render | [pendiente] | `main` |
-| Base de datos (PostgreSQL) | Neon | [pendiente] | — |
-| Swagger (solo si `SWAGGER_ENABLED=true`) | Render | [pendiente]/api/docs | `main` |
+| Frontend (Next.js) | Vercel | Pendiente de verificación HTTPS | `main` |
+| Backend (NestJS) | Render | Pendiente de verificación HTTPS | `main` |
+| Base de datos (PostgreSQL) | Neon | Privada | — |
+| Swagger (solo si `SWAGGER_ENABLED=true`) | Render | Pendiente de verificación HTTPS | `main` |
 
 Los usuarios de prueba se entregan en Moodle, no en este repositorio.
 
@@ -40,6 +40,8 @@ Los usuarios de prueba se entregan en Moodle, no en este repositorio.
 | [07 · Forma de trabajo](docs/07-forma-de-trabajo.md) | Tablero, Git Flow, convención de commits y de pull requests |
 | [08 · Historias](docs/08-historias.md) | Las 11 historias de usuario con responsable, card, PR y estado |
 | [09 · Problemas conocidos](docs/09-problemas-conocidos.md) | Limitaciones, pendientes y puntos abiertos |
+
+[Evidencia y lista de verificación de la entrega v1.0.0](docs/entrega-v1.0.0.md).
 
 ## Frontend
 

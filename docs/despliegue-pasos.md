@@ -94,15 +94,7 @@ $env:NODE_ENV = 'production'
 $env:ALLOW_DEMO_SEED = 'true'
 $env:DEMO_SEED_PASSWORD = '<contraseña-demo-de-12-a-72-bytes>'
 
-npm run db:seed:base
-npm run db:seed:catalog
-npm run db:seed:rewards
-npm run db:seed:branch-config
-npm run db:seed:inventory
-npm run db:seed:review
-npm run db:seed:loyalty
-npm run db:seed:notifications
-npm run db:seed:sales-report
+npm run db:seed:release
 
 Remove-Item Env:DATABASE_URL, Env:NODE_ENV, Env:ALLOW_DEMO_SEED, Env:DEMO_SEED_PASSWORD
 ```
