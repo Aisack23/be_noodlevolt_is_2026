@@ -128,7 +128,7 @@ describe('BE-02: pedido de salón para mesero', () => {
       tableId,
       tableNumber: '12',
       waiterId,
-      orderNumber: null,
+      orderNumber: expect.stringMatching(/^ORD-\d{6}$/),
       lines: [{ dishId, quantity: 2, note: 'Sin cebolla', dishName: 'Ramen' }],
     });
     const stored = await db.query(

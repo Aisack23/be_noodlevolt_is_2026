@@ -312,6 +312,21 @@ describe('BE-03: cocina y entrega contra PostgreSQL', () => {
     });
   });
 
+  it('cola de cocina muestra el número que asigna la base cuando el pedido no lo envía', async () => {
+    const id = randomUUID();
+    orders.push(id);
+    await client.query(
+      `INSERT INTO orders (id,branch_id,customer_id,type,status,operation_id,updated_at)
+      VALUES ($1,$2,$3,'DINE_IN','PENDING',$4,now())`,
+      [id, branches[0], actors.CLIENT, randomUUID()],
+    );
+    const response = await get(base).expect(200);
+    const rows = response.body as QueueOrder[];
+    expect(rows.find((row) => row.id === id)?.orderNumber).toMatch(
+      /^ORD-\d{6}$/,
+    );
+  });
+
   it('cola mesero: READY propios por fecha de LISTO, fallback createdAt, entrega desaparece', async () => {
     const readyLater = await order(
       'READY',
