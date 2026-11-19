@@ -7,7 +7,7 @@ import { ipKeyGenerator, rateLimit } from 'express-rate-limit';
 import helmet from 'helmet';
 import { PrismaService } from '@Prisma/services';
 import type { EnvConfig } from '@Config';
-import { isAllowedIp } from './network-policy.js';
+import { isAllowedIp, trustProxySetting } from './network-policy.js';
 import { PostgresRateLimitStore } from './postgres-rate-limit.store.js';
 import { SafeExceptionFilter } from './safe-exception.filter.js';
 
@@ -21,8 +21,13 @@ export class HttpSecurityService {
 
   install(app: INestApplication): void {
     const api = app.getHttpAdapter().getInstance() as Express;
-    const proxies = this.config.get('TRUSTED_PROXY_CIDRS', { infer: true });
-    api.set('trust proxy', proxies.length ? proxies : false);
+    api.set(
+      'trust proxy',
+      trustProxySetting(
+        this.config.get('TRUSTED_PROXY_CIDRS', { infer: true }),
+        this.config.get('TRUSTED_PROXY_HOPS', { infer: true }),
+      ),
+    );
     api.disable('x-powered-by');
     if (this.config.get('NODE_ENV', { infer: true }) === 'production')
       app.useGlobalFilters(new SafeExceptionFilter());
