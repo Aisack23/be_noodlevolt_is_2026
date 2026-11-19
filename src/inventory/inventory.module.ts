@@ -1,4 +1,5 @@
 import { Module } from '@nestjs/common';
+import { IngredientAvailabilityRepository } from './stock/repositories/ingredient-availability.repository.js';
 import {
   IngredientRepository,
   BranchIngredientRepository,
@@ -13,6 +14,7 @@ import {
 @Module({
   controllers: [InventoryStockController],
   providers: [
+    IngredientAvailabilityRepository,
     IngredientRepository,
     BranchIngredientRepository,
     InventoryMovementRepository,
@@ -20,6 +22,8 @@ import {
     InventoryStockService,
   ],
   exports: [
+    IngredientAvailabilityRepository,
+    InventoryStockService,
     IngredientRepository,
     BranchIngredientRepository,
     InventoryMovementRepository,

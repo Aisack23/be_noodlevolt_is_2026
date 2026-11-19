@@ -6,7 +6,7 @@ import { NotFoundException } from '@nestjs/common';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import request from 'supertest';
 import { JwtAuthGuard } from '@Auth/guards';
-import type { UsersService } from '@Users/services';
+import type { RefreshTokenRepository } from '@Auth/repositories';
 import { BranchesQueryController } from '../controllers/branches-query.controller.js';
 import { BranchesQueryService } from './branches-query.service.js';
 import { BranchRepository } from '../repositories/branch.repository.js';
@@ -14,7 +14,6 @@ import { BranchRepository } from '../repositories/branch.repository.js';
 vi.mock('../repositories/branch.repository.js', () => ({
   BranchRepository: class {},
 }));
-vi.mock('@Users/services', () => ({ UsersService: class {} }));
 
 const id = '10000000-0000-4000-8000-000000000001';
 const branch = {
@@ -37,7 +36,7 @@ const response = {
 
 describe('Consultas públicas de sucursales', () => {
   const repository = { findPublicBranches: vi.fn(), findPublicBranch: vi.fn() };
-  const users = { findById: vi.fn() };
+  const sessions = { findActiveUser: vi.fn() };
   let app: INestApplication;
   let service: BranchesQueryService;
   beforeAll(async () => {
@@ -51,7 +50,7 @@ describe('Consultas públicas de sucursales', () => {
           useValue: new JwtAuthGuard(
             new Reflector(),
             new JwtService(),
-            users as unknown as UsersService,
+            sessions as unknown as RefreshTokenRepository,
           ),
         },
       ],
@@ -74,7 +73,7 @@ describe('Consultas públicas de sucursales', () => {
     await request(app.getHttpServer())
       .get('/api/v1/branches')
       .expect(200, [response]);
-    expect(users.findById).not.toHaveBeenCalled();
+    expect(sessions.findActiveUser).not.toHaveBeenCalled();
   });
   it('permite consultar con Bearer inválido porque el listado es público', async () => {
     await request(app.getHttpServer())

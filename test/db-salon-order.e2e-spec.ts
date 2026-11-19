@@ -1,3 +1,4 @@
+import { accessTokenFor } from './support/access-token.js';
 import 'dotenv/config';
 import { randomBytes, randomUUID } from 'node:crypto';
 import { Test } from '@nestjs/testing';
@@ -75,7 +76,7 @@ describe('BE-02: pedido de salón para mesero', () => {
       throw error;
     }
     const jwt = module.get(JwtService);
-    token = await jwt.signAsync({ sub: waiterId });
+    token = await accessTokenFor(db!, jwt, waiterId);
   });
 
   beforeEach(async () => {

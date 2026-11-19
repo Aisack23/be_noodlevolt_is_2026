@@ -1,3 +1,4 @@
+import { accessTokenFor } from './support/access-token.js';
 import 'dotenv/config';
 import { randomBytes, randomUUID } from 'node:crypto';
 import { Test } from '@nestjs/testing';
@@ -166,13 +167,13 @@ describe(
       fixtureReady = true;
       const jwt = module.get(JwtService);
       tokens = await Promise.all(
-        customers.map((id) => jwt.signAsync({ sub: id })),
+        customers.map((id) => accessTokenFor(db!, jwt, id)),
       );
       staff = new Map(
         await Promise.all(
           roles.map(
             async (role, i) =>
-              [role, await jwt.signAsync({ sub: staffIds[i] })] as const,
+              [role, await accessTokenFor(db!, jwt, staffIds[i])] as const,
           ),
         ),
       );
@@ -373,8 +374,11 @@ describe(
     });
 
     it('rechaza roles sin permiso y sucursales ajenas', async () => {
-      await dining('tables', tokens[0]).expect(403);
-      await dining('rooms', staff.get(UserRole.INVENTORY_MANAGER)).expect(403);
+      const routes = ['tables', 'rooms', `tables/${randomUUID()}`];
+      for (const route of routes) {
+        await dining(route, tokens[0]).expect(403);
+        await dining(route, staff.get(UserRole.INVENTORY_MANAGER)).expect(403);
+      }
       await dining('tables', staff.get(UserRole.WAITER), branches[1]).expect(
         403,
       );

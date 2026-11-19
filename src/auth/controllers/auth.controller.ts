@@ -18,7 +18,7 @@ import {
 import { AuthService } from '@Auth/services';
 import { CurrentUser, Public } from '@Auth/decorators';
 import { AuthResponseDto, LoginDto, RefreshTokenDto } from '@Auth/dto';
-import { UserResponseDto } from '@Users/dto';
+import { SessionUserResponseDto } from '../dto/auth-response.dto.js';
 import type { User } from '@PrismaClient';
 
 @ApiTags('auth')
@@ -70,11 +70,11 @@ export class AuthController {
   @Get('me')
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Devuelve el usuario autenticado' })
-  @ApiOkResponse({ type: UserResponseDto })
+  @ApiOkResponse({ type: SessionUserResponseDto })
   @ApiUnauthorizedResponse({
     description: 'Token ausente, inválido o expirado.',
   })
-  me(@CurrentUser() user: User): UserResponseDto {
-    return UserResponseDto.fromEntity(user);
+  me(@CurrentUser() user: User): SessionUserResponseDto {
+    return SessionUserResponseDto.fromEntity(user);
   }
 }

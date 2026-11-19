@@ -1,3 +1,4 @@
+import { accessTokenFor } from './support/access-token.js';
 import 'dotenv/config';
 import { randomBytes, randomUUID } from 'node:crypto';
 import { Test } from '@nestjs/testing';
@@ -67,7 +68,7 @@ describe('BE-06: endpoint y persistencia Prisma reales', () => {
       await client.query('ROLLBACK');
       throw error;
     }
-    token = await module.get(JwtService).signAsync({ sub: customerId });
+    token = await accessTokenFor(client!, module.get(JwtService), customerId);
   });
   beforeEach(async () => {
     orderId = randomUUID();

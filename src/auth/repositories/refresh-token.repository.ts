@@ -3,6 +3,8 @@ import { PrismaService } from '@Prisma/services';
 import type { Prisma, RefreshToken, User } from '@PrismaClient';
 
 export interface CreateRefreshTokenData {
+  id?: string;
+  familyId?: string;
   tokenHash: string;
   userId: string;
   expiresAt: Date;
@@ -31,9 +33,17 @@ export class RefreshTokenRepository {
     return (tx ?? this.prisma).refreshToken.create({ data });
   }
 
+  async findActiveUser(id: string, userId: string): Promise<User | null> {
+    const session = await this.prisma.refreshToken.findFirst({
+      where: { id, userId, revokedAt: null, expiresAt: { gt: new Date() }, user: { isActive: true } },
+      select: { user: true },
+    });
+    return session?.user ?? null;
+  }
+
   rotate<T>(
     tokenHash: string,
-    issue: (user: User, tx: Prisma.TransactionClient) => Promise<T>,
+    issue: (user: User, tx: Prisma.TransactionClient, familyId: string) => Promise<T>,
   ): Promise<RotationResult<T>> {
     return this.prisma.$transaction(
       async (tx): Promise<RotationResult<T>> => {
@@ -65,7 +75,7 @@ export class RefreshTokenRepository {
         return {
           kind: 'rotated',
           user: stored.user,
-          value: await issue(stored.user, tx),
+          value: await issue(stored.user, tx, stored.familyId ?? stored.id),
         };
       },
       { timeout: 10000 },
@@ -90,19 +100,24 @@ export class RefreshTokenRepository {
   }
 
   /**
-   * Revoca por hash. Devuelve cuántas filas cambiaron.
-   *
-   * Usa `updateMany` con `revokedAt: null` en el filtro para que sea
-   * idempotente: si el token no existe o ya estaba revocado, no lanza, solo
-   * devuelve 0.
+   * Revoca la sesión completa, incluso si el token recibido acaba de rotar.
+   * Usa el mismo bloqueo del usuario que rotate para serializar ambas operaciones.
    */
   revokeByTokenHash(tokenHash: string): Promise<number> {
-    return this.prisma.refreshToken
-      .updateMany({
-        where: { tokenHash, revokedAt: null },
+    return this.prisma.$transaction(async (tx) => {
+      const token = await tx.refreshToken.findUnique({
+        where: { tokenHash },
+        select: { id: true, familyId: true, userId: true },
+      });
+      if (!token) return 0;
+      await tx.$queryRaw`SELECT id FROM users WHERE id=${token.userId}::uuid FOR UPDATE`;
+      const familyId = token.familyId ?? token.id;
+      const result = await tx.refreshToken.updateMany({
+        where: { userId: token.userId, revokedAt: null, OR: [{ familyId }, { id: familyId }] },
         data: { revokedAt: new Date() },
-      })
-      .then((result) => result.count);
+      });
+      return result.count;
+    });
   }
 
   /** Revoca todas las sesiones activas de un usuario. Devuelve cuántas cerró. */

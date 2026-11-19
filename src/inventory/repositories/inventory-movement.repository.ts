@@ -23,8 +23,8 @@ export interface CreateInventoryMovementData {
 export class InventoryMovementRepository {
   constructor(private readonly prisma: PrismaService) {}
 
-  create(data: CreateInventoryMovementData): Promise<InventoryMovement> {
-    return this.prisma.inventoryMovement.create({ data });
+  create(data: CreateInventoryMovementData, tx?: Prisma.TransactionClient): Promise<InventoryMovement> {
+    return (tx ?? this.prisma).inventoryMovement.create({ data });
   }
 
   createMany(

@@ -117,11 +117,20 @@ un 401; el reemplazo del primero queda revocado por la detección del segundo.
 El frontend debe coordinar una sola renovación en curso y solicitar login ante
 esa respuesta. Un fallo de firma o persistencia revierte el intento completo.
 
-Logout revoca el refresh token indicado y es idempotente. Los JWT de acceso
-emitidos son stateless y conservan su vigencia de hasta 15 minutos; no existe
-denylist de acceso. Desactivar la cuenta sí invalida inmediatamente sus accesos
-porque el guard relee al usuario. Si se exige invalidación inmediata por sesión,
-se necesita un diseño adicional de sesión/revocación persistente.
+El JWT incluye `sid` y el guard exige que corresponda a un refresh token
+activo del mismo usuario. La rotación invalida el access token anterior y
+mantiene la familia de sesión. Logout revoca la familia de forma idempotente,
+incluso si el refresh token indicado ya fue rotado. Los JWT emitidos antes
+de añadir `sid` requieren iniciar sesión nuevamente.
+
+## Limpieza de sesiones y cuotas
+
+En Vercel, `vercel.json` programa `GET /api/v1/internal/cleanup` diariamente
+a las 09:00 UTC. Configura `CRON_SECRET` en el proyecto del backend como un
+secreto aleatorio independiente de `JWT_SECRET`. Vercel lo envía en
+`Authorization: Bearer`. El endpoint queda deshabilitado si falta el secreto.
+En otro entorno, programa esa misma llamada autenticada. Cada ejecución
+procesa hasta 10 000 filas vencidas por tabla.
 
 Los JWT emitidos por versiones anteriores sin emisor/audiencia se rechazan al
 desplegar esta política. Un refresh válido puede obtener el formato nuevo; en

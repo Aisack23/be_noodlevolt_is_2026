@@ -1,3 +1,4 @@
+import { accessTokenFor } from './support/access-token.js';
 import 'dotenv/config';
 import { randomBytes, randomUUID } from 'node:crypto';
 import { Test } from '@nestjs/testing';
@@ -65,7 +66,7 @@ describe('HU-04: reservación con PostgreSQL real', () => {
       await client.query('ROLLBACK');
       throw error;
     }
-    token = await module.get(JwtService).signAsync({ sub: userId });
+    token = await accessTokenFor(client!, module.get(JwtService), userId);
   });
   beforeEach(async () => {
     await client!.query(

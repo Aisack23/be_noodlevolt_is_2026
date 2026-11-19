@@ -7,7 +7,7 @@ import type { INestApplication } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import request from 'supertest';
 import { JwtAuthGuard } from '@Auth/guards';
-import type { UsersService } from '@Users/services';
+import type { RefreshTokenRepository } from '@Auth/repositories';
 import type { Prisma } from '@PrismaClient';
 import { NotificationsController } from '../controllers/notifications.controller.js';
 import { NotificationsRepository } from '../repositories/notifications.repository.js';
@@ -20,7 +20,7 @@ describe('BE-09: sesión, buzón e integración interna', () => {
     createOrderReady: vi.fn(),
     markOwnAsRead: vi.fn(),
   };
-  const users = { findById: vi.fn() };
+  const sessions = { findActiveUser: vi.fn() };
   const jwt = new JwtService({
     secret: randomBytes(32).toString('hex'),
     signOptions: {
@@ -43,7 +43,7 @@ describe('BE-09: sesión, buzón e integración interna', () => {
           useValue: new JwtAuthGuard(
             new Reflector(),
             jwt,
-            users as unknown as UsersService,
+            sessions as unknown as RefreshTokenRepository,
           ),
         },
       ],
@@ -59,11 +59,11 @@ describe('BE-09: sesión, buzón e integración interna', () => {
       }),
     );
     await app.init();
-    token = await jwt.signAsync({ sub: userId });
+    token = await jwt.signAsync({ sub: userId, sid: '00000000-0000-4000-8000-000000000001' });
   });
   beforeEach(() => {
     vi.resetAllMocks();
-    users.findById.mockResolvedValue({
+    sessions.findActiveUser.mockResolvedValue({
       id: userId,
       role: 'CLIENT',
       isActive: true,
@@ -143,7 +143,7 @@ describe('BE-09: sesión, buzón e integración interna', () => {
     'CASHIER',
     'INVENTORY_MANAGER',
   ])('rechaza el rol %s', async (role) => {
-    users.findById.mockResolvedValue({ id: userId, role, isActive: true });
+    sessions.findActiveUser.mockResolvedValue({ id: userId, role, isActive: true });
     await get().expect(403);
     await patch().expect(403);
     expect(repository.markOwnAsRead).not.toHaveBeenCalled();

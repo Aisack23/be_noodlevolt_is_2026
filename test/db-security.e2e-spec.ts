@@ -1,3 +1,4 @@
+import { accessTokenFor } from './support/access-token.js';
 import 'dotenv/config';
 import { createHash, randomBytes, randomUUID } from 'node:crypto';
 import { Test } from '@nestjs/testing';
@@ -193,7 +194,7 @@ describe('Auditoría de seguridad con HTTP y PostgreSQL reales', () => {
       data: { key, hits: 1, expiresAt: new Date(Date.now() - 1000) },
     });
     let transactionOpen = false;
-    let cleanup: Promise<void> | undefined;
+    let cleanup: ReturnType<RateLimitCleanupService['cleanup']> | undefined;
     try {
       await db.query('BEGIN');
       transactionOpen = true;
@@ -509,17 +510,19 @@ describe('Auditoría de seguridad con HTTP y PostgreSQL reales', () => {
         algorithm: 'HS256',
       },
     });
+    const valid = await authorized();
+    const { sid } = jwt.decode(valid.accessToken) as { sid: string };
     const bad = [
       raw.sign({ sub: users[0] }),
-      raw.sign({ sub: users[0] }, { expiresIn: 900, noTimestamp: true }),
-      raw.sign({ sub: users[0] }, { expiresIn: 1800 }),
-      raw.sign({ sub: users[0] }, { expiresIn: -10 }),
-      raw.sign({ sub: users[0] }, { expiresIn: 900, algorithm: 'HS512' }),
-      raw.sign({ sub: users[0] }, { expiresIn: 900, audience: 'other' }),
-      raw.sign({ sub: users[0] }, { expiresIn: 900, issuer: 'other' }),
-      raw.sign({ sub: 'not-a-uuid' }, { expiresIn: 900 }),
+      raw.sign({ sub: users[0], sid }, { expiresIn: 900, noTimestamp: true }),
+      raw.sign({ sub: users[0], sid }, { expiresIn: 1800 }),
+      raw.sign({ sub: users[0], sid }, { expiresIn: -10 }),
+      raw.sign({ sub: users[0], sid }, { expiresIn: 900, algorithm: 'HS512' }),
+      raw.sign({ sub: users[0], sid }, { expiresIn: 900, audience: 'other' }),
+      raw.sign({ sub: users[0], sid }, { expiresIn: 900, issuer: 'other' }),
+      raw.sign({ sub: 'not-a-uuid', sid }, { expiresIn: 900 }),
       raw.sign(
-        { sub: users[0], iat: Math.floor(Date.now() / 1000) + 30 },
+        { sub: users[0], sid, iat: Math.floor(Date.now() / 1000) + 30 },
         { expiresIn: 900 },
       ),
     ];
@@ -560,8 +563,7 @@ describe('Auditoría de seguridad con HTTP y PostgreSQL reales', () => {
       .set('Authorization', bearer)
       .expect(200);
     expect(balance.body.points).toBe(0);
-    const spoofedRole = await jwt.signAsync({
-      sub: users[0],
+    const spoofedRole = await accessTokenFor(db, jwt, users[0], {
       role: 'GENERAL_MANAGER',
       branchId: branches[1],
     });
@@ -660,17 +662,22 @@ describe('Auditoría de seguridad con HTTP y PostgreSQL reales', () => {
     await refresh(initial.refreshToken).expect(200);
   });
 
-  it('mantiene logout idempotente y documenta que el access JWT conserva su expiración corta', async () => {
+  it('mantiene logout idempotente e invalida también el JWT de acceso', async () => {
     const initial = (await login().expect(200)).body;
+    const current = (await refresh(initial.refreshToken).expect(200)).body;
+    for (const session of [initial, current]) {
+      await get(primary, '/api/v1/auth/me')
+        .set('Authorization', `Bearer ${session.accessToken}`)
+        .expect(session === initial ? 401 : 200);
+    }
     for (let i = 0; i < 2; i++)
       await request(primary.getHttpServer())
         .post('/api/v1/auth/logout')
         .send({ refreshToken: initial.refreshToken })
         .expect(204);
-    await refresh(initial.refreshToken).expect(401);
     await get(primary, '/api/v1/auth/me')
-      .set('Authorization', `Bearer ${initial.accessToken}`)
-      .expect(200);
+      .set('Authorization', `Bearer ${current.accessToken}`)
+      .expect(401);
   });
 });
 
