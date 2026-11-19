@@ -26,6 +26,7 @@ export interface EnvConfig {
   RATE_LIMIT_REFRESH: number;
   RATE_LIMIT_WRITES: number;
   SWAGGER_ENABLED: boolean;
+  ALLOW_DEMO_SEED: boolean;
 }
 
 const requiredVars = ['DATABASE_URL', 'JWT_SECRET'] as const;
@@ -191,5 +192,6 @@ export function validateEnv(raw: Record<string, unknown>): EnvConfig {
       'SWAGGER_ENABLED',
       nodeEnv !== 'production',
     ),
+    ALLOW_DEMO_SEED: readBoolean(raw, 'ALLOW_DEMO_SEED', false),
   };
 }

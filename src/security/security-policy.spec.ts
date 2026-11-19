@@ -172,14 +172,51 @@ describe('Configuración segura y límites criptográficos', () => {
       ).not.toHaveLength(0);
     },
   );
-  it('bloquea los usuarios demo antes de escribir en producción', async () => {
+  it('bloquea los usuarios demo en producción si no se pide explícitamente', async () => {
     vi.stubEnv('NODE_ENV', 'production');
     try {
       await expect(seedBaseData({} as PrismaClient)).rejects.toThrow(
-        /producción/,
+        /ALLOW_DEMO_SEED/,
       );
     } finally {
       vi.unstubAllEnvs();
     }
+  });
+  it('exige DEMO_SEED_PASSWORD aunque ALLOW_DEMO_SEED esté activo en producción', async () => {
+    vi.stubEnv('NODE_ENV', 'production');
+    vi.stubEnv('ALLOW_DEMO_SEED', 'true');
+    vi.stubEnv('DEMO_SEED_PASSWORD', '');
+    const prisma = { $transaction: vi.fn() };
+    try {
+      await expect(
+        seedBaseData(prisma as unknown as PrismaClient),
+      ).rejects.toThrow(/DEMO_SEED_PASSWORD/);
+      expect(prisma.$transaction).not.toHaveBeenCalled();
+    } finally {
+      vi.unstubAllEnvs();
+    }
+  });
+  it('crea los datos demo en producción solo con ALLOW_DEMO_SEED=true y contraseña', async () => {
+    vi.stubEnv('NODE_ENV', 'production');
+    vi.stubEnv('ALLOW_DEMO_SEED', 'true');
+    vi.stubEnv('DEMO_SEED_PASSWORD', 'Demo-Entrega-2026!');
+    const prisma = { $transaction: vi.fn() };
+    try {
+      await seedBaseData(prisma as unknown as PrismaClient);
+      expect(prisma.$transaction).toHaveBeenCalledTimes(1);
+    } finally {
+      vi.unstubAllEnvs();
+    }
+  });
+  it.each(['yes', 'TRUE', '1'])(
+    'rechaza ALLOW_DEMO_SEED=%s porque no es un booleano estricto',
+    (ALLOW_DEMO_SEED) => {
+      expect(() => validateEnv({ ...base, ALLOW_DEMO_SEED })).toThrow(
+        /ALLOW_DEMO_SEED/,
+      );
+    },
+  );
+  it('deja ALLOW_DEMO_SEED desactivado por defecto', () => {
+    expect(validateEnv(base).ALLOW_DEMO_SEED).toBe(false);
   });
 });

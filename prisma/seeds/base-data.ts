@@ -48,9 +48,14 @@ const USERS = [
 ];
 
 export async function seedBaseData(prisma: PrismaClient) {
-  if (process.env.NODE_ENV === 'production')
+  // En producción el seed solo corre si el operador lo pide explícitamente.
+  // La comparación es estricta, igual que readBoolean en env.validation.ts.
+  if (
+    process.env.NODE_ENV === 'production' &&
+    process.env.ALLOW_DEMO_SEED !== 'true'
+  )
     throw new Error(
-      'Los datos y usuarios demo no se pueden crear en producción.',
+      'Los datos y usuarios demo no se pueden crear en producción sin ALLOW_DEMO_SEED=true.',
     );
   const password = process.env.DEMO_SEED_PASSWORD;
   if (
