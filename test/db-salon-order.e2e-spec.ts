@@ -172,7 +172,86 @@ describe('BE-02: pedido de salón para mesero', () => {
     await db.query('UPDATE dining_rooms SET is_active=true WHERE id=$1', [roomId]);
     await db.query('UPDATE dishes SET is_available=false WHERE id=$1', [dishId]);
     const response = await post({ tableId, operationKey: randomUUID(), lines: [{ dishId, quantity: 1 }] }).expect(409);
-    expect(response.body).toMatchObject({ dishId });
+    expect(response.body).toMatchObject({
+      dishId,
+      unavailableDishes: [{ id: dishId, name: 'Ramen' }],
+    });
+  });
+
+  it.each(['AVAILABLE', 'NEEDS_CLEANING', 'RESERVED'] as const)(
+    'pasa la mesa de %s a OCCUPIED dentro de la misma transacción del pedido',
+    async (status) => {
+      await db.query('UPDATE tables SET status=$1 WHERE id=$2', [status, tableId]);
+      await post({ tableId, operationKey: randomUUID(), lines: [{ dishId, quantity: 1 }] }).expect(201);
+      const table = await db.query('SELECT status FROM tables WHERE id=$1', [tableId]);
+      expect(table.rows[0].status).toBe('OCCUPIED');
+    },
+  );
+
+  it('reutiliza la cuenta abierta en el segundo pedido de la mesa', async () => {
+    const first = await post({ tableId, operationKey: randomUUID(), lines: [{ dishId, quantity: 1 }] }).expect(201);
+    const second = await post({ tableId, operationKey: randomUUID(), lines: [{ dishId, quantity: 2 }] }).expect(201);
+    const accountsOfOrders = await db.query(
+      'SELECT DISTINCT account_id FROM orders WHERE id = ANY($1::uuid[])',
+      [[first.body.id, second.body.id]],
+    );
+    expect(accountsOfOrders.rows).toHaveLength(1);
+    const accounts = await db.query(
+      'SELECT count(*)::int AS count FROM accounts WHERE branch_id=$1 AND table_id=$2 AND status=$3',
+      [branchId, tableId, 'OPEN'],
+    );
+    expect(accounts.rows[0].count).toBe(1);
+    const table = await db.query('SELECT status FROM tables WHERE id=$1', [tableId]);
+    expect(table.rows[0].status).toBe('OCCUPIED');
+  });
+
+  it('lista todos los platillos no disponibles en un solo 409 y no crea pedido ni cambia la mesa', async () => {
+    const soldOutA = randomUUID();
+    const soldOutB = randomUUID();
+    await db.query(
+      `INSERT INTO dishes (id,branch_id,category_id,name,price,is_available)
+       VALUES ($1,$3,$4,'Gyoza','6.00',false), ($2,$3,$4,'Pan','2.50',false)`,
+      [soldOutA, soldOutB, branchId, categoryId],
+    );
+
+    const response = await post({
+      tableId,
+      operationKey: randomUUID(),
+      lines: [
+        { dishId: soldOutA, quantity: 1 },
+        { dishId, quantity: 1 },
+        { dishId: soldOutB, quantity: 2 },
+        { dishId: soldOutA, quantity: 3, note: 'Extra' },
+      ],
+    }).expect(409);
+
+    expect(response.body.unavailableDishes).toHaveLength(2);
+    expect(response.body.unavailableDishes).toEqual(
+      expect.arrayContaining([
+        { id: soldOutA, name: 'Gyoza' },
+        { id: soldOutB, name: 'Pan' },
+      ]),
+    );
+    expect(response.body.dishId).toBe(response.body.unavailableDishes[0].id);
+    const orders = await db.query('SELECT count(*)::int AS count FROM orders WHERE branch_id=$1', [branchId]);
+    expect(orders.rows[0].count).toBe(0);
+    const table = await db.query('SELECT status FROM tables WHERE id=$1', [tableId]);
+    expect(table.rows[0].status).toBe('AVAILABLE');
+  });
+
+  it('reintento con la misma clave responde 200 sin duplicar pedido ni volver a tocar la mesa', async () => {
+    const payload = { tableId, operationKey: randomUUID(), lines: [{ dishId, quantity: 1 }] };
+    const first = await post(payload).expect(201);
+    // El reintento no debe pasar la mesa a OCCUPIED de nuevo: si lo hiciera, RESERVED cambiaría.
+    await db.query('UPDATE tables SET status=$1 WHERE id=$2', ['RESERVED', tableId]);
+    const repeat = await post(payload).expect(200);
+    expect(repeat.body).toEqual(first.body);
+    const orders = await db.query('SELECT count(*)::int AS count FROM orders WHERE branch_id=$1', [branchId]);
+    expect(orders.rows[0].count).toBe(1);
+    const accounts = await db.query('SELECT count(*)::int AS count FROM accounts WHERE branch_id=$1', [branchId]);
+    expect(accounts.rows[0].count).toBe(1);
+    const table = await db.query('SELECT status FROM tables WHERE id=$1', [tableId]);
+    expect(table.rows[0].status).toBe('RESERVED');
   });
 
   it('rechaza líneas duplicadas exactas y campos ajenos por validación del DTO', async () => {
