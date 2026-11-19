@@ -37,9 +37,11 @@ COPY . .
 RUN npm run build
 
 # Se eliminan las devDependencies para copiar solo runtime a la imagen final.
-# Nota: `prisma`, `dotenv` y `tsx` son dependencies (no devDependencies) a
-# propósito, porque el contenedor corre `prisma migrate deploy` al arrancar y
-# `prisma db seed` a demanda; este prune se las llevaría.
+# Nota: `prisma` y `dotenv` son dependencies (no devDependencies) a propósito,
+# porque el contenedor corre `prisma migrate deploy` al arrancar. `tsx` es
+# devDependency y este prune lo elimina, así que `prisma db seed` no corre dentro
+# de la imagen: el seed se ejecuta desde una máquina de desarrollo (ver
+# docs/06-despliegue.md).
 RUN npm prune --omit=dev
 
 # --- Etapa 3: runtime ------------------------------------------------------
