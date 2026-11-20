@@ -50,8 +50,7 @@ Lista de lo que falla, quedó incompleto o no está confirmado desde el código 
 
 ## 9.8 Despliegue
 
-- **Sin release publicado.** `main` solo tiene los merges del boilerplate y no tiene tags. Las URLs de Vercel, Render y Neon siguen en [pendiente].
-- **Arranque en Render.** Antes de iniciar la API debe aplicarse `prisma migrate deploy`, igual que en Compose. Los valores de las variables de producción se completan después del despliegue; la lista de nombres está en [06 · Despliegue](06-despliegue.md).
+- **Publicación de v1.0.0.** El estado de la etiqueta, la verificación del ambiente HTTPS y las tareas pendientes de publicación se registran en el [checklist de entrega](entrega-v1.0.0.md). Las URL públicas se documentan después de comprobar el despliegue.- **Arranque en Render.** Antes de iniciar la API debe aplicarse `prisma migrate deploy`, igual que en Compose. Los valores de las variables de producción se completan después del despliegue; la lista de nombres está en [06 · Despliegue](06-despliegue.md).
 
 ## 9.9 Calidad y pendientes de QA
 
