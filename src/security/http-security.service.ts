@@ -4,7 +4,7 @@ import { Inject, Injectable, type INestApplication } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import express, { type Express, type RequestHandler } from 'express';
 import { ipKeyGenerator, rateLimit } from 'express-rate-limit';
-import helmet from 'helmet';
+import helmet = require('helmet');
 import { PrismaService } from '@Prisma/services';
 import type { EnvConfig } from '@Config';
 import { isAllowedIp, trustProxySetting } from './network-policy.js';
@@ -31,7 +31,7 @@ export class HttpSecurityService {
     api.disable('x-powered-by');
     if (this.config.get('NODE_ENV', { infer: true }) === 'production')
       app.useGlobalFilters(new SafeExceptionFilter());
-    api.use(helmet({ referrerPolicy: { policy: 'no-referrer' } }));
+    api.use(helmet.default({ referrerPolicy: { policy: 'no-referrer' } }));    
     api.use((req, res, next) => {
       res.setHeader('X-Request-Id', randomUUID());
       const healthCheck =
