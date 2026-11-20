@@ -79,3 +79,9 @@ La última revisión documentada de Trello deja HU-04, HU-07 y HU-10 en QA. Conf
 - [ ] Probar los módulos con la [guía de uso](01-guia-de-uso.md). Crear una reserva futura y registrar una compra de prueba con los datos semilla. Registrar resultados antes de cerrar las cards.
 - [ ] Completar las URL HTTPS verificadas en el README y en la guía de despliegue.
 - [ ] Mantener el ambiente y las cuentas demo disponibles hasta el martes 24 de noviembre de 2026, inclusive. Registrar una comprobación HTTPS ese día antes de retirar los accesos.
+
+Los cinco roles del alcance son `CLIENT`, `WAITER`, `COOK`, `BRANCH_ADMIN`
+y `GENERAL_MANAGER`. El seed crea ocho cuentas porque incluye dos gerentes
+de sucursal y una cuenta para cada perfil heredado, `CASHIER` e
+`INVENTORY_MANAGER`. Estos dos perfiles carecen de flujos propios en las
+historias de la entrega.
