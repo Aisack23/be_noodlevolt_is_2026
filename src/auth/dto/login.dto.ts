@@ -1,5 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsNotEmpty, IsString, MaxLength } from 'class-validator';
+import { IsByteLength, IsNotEmpty, IsString, MaxLength } from 'class-validator';
 import { IsNormalizedEmail } from '@Common/decorators';
 
 export class LoginDto {
@@ -14,5 +14,8 @@ export class LoginDto {
   @IsString()
   @IsNotEmpty({ message: 'La contraseña es obligatoria.' })
   @MaxLength(72)
+  @IsByteLength(1, 72, {
+    message: 'La contraseña no puede superar los 72 bytes UTF-8.',
+  })
   password!: string;
 }

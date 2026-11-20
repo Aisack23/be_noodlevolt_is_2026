@@ -1,11 +1,12 @@
-import { Injectable, UnauthorizedException } from '@nestjs/common';
+import { Inject, Injectable, UnauthorizedException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
-import { createHash, randomBytes } from 'node:crypto';
+import { createHash, randomBytes, randomUUID } from 'node:crypto';
 import { RefreshTokenRepository } from '@Auth/repositories';
 import type { AccessTokenPayload, TokenPair } from '@Auth/types';
 import type { EnvConfig } from '@Config';
-import type { User } from '@PrismaClient';
+import type { Prisma, User } from '@PrismaClient';
+import { ACCESS_TOKEN_POLICY } from '../types/access-token-policy.js';
 
 const MILLISECONDS_PER_DAY = 24 * 60 * 60 * 1000;
 const REFRESH_TOKEN_BYTES = 32;
@@ -13,7 +14,7 @@ const REFRESH_TOKEN_BYTES = 32;
 /**
  * Emisión, rotación y revocación de tokens.
  *
- * El access token es un JWT de vida corta y sin estado. El refresh token es un
+ * El access token es un JWT de vida corta vinculado a la sesión. El refresh token es un
  * string opaco persistido: se guarda su SHA-256, no el valor en claro.
  *
  * Por qué SHA-256 y no bcrypt para el refresh token: son 32 bytes aleatorios,
@@ -28,9 +29,10 @@ export class TokenService {
   private readonly refreshTokenTtlMs: number;
 
   constructor(
+    @Inject(RefreshTokenRepository)
     private readonly refreshTokenRepository: RefreshTokenRepository,
-    private readonly jwtService: JwtService,
-    configService: ConfigService<EnvConfig, true>,
+    @Inject(JwtService) private readonly jwtService: JwtService,
+    @Inject(ConfigService) configService: ConfigService<EnvConfig, true>,
   ) {
     this.refreshTokenTtlMs =
       configService.get('REFRESH_TOKEN_EXPIRES_IN_DAYS', { infer: true }) *
@@ -38,24 +40,36 @@ export class TokenService {
   }
 
   /** Emite un par de tokens nuevo y persiste el refresh token. */
-  async issueTokenPair(user: User): Promise<TokenPair> {
+  async issueTokenPair(
+    user: User,
+    tx?: Prisma.TransactionClient,
+    familyId?: string,
+  ): Promise<TokenPair> {
     const payload: AccessTokenPayload = {
       sub: user.id,
+      sid: randomUUID(),
       email: user.email,
+      role: user.role,
+      branchId: user.branchId,
     };
 
     const accessToken = await this.jwtService.signAsync(payload);
     const refreshToken = randomBytes(REFRESH_TOKEN_BYTES).toString('hex');
 
-    await this.refreshTokenRepository.create({
+    const stored = {
+      id: payload.sid,
+      familyId: familyId ?? payload.sid,
       tokenHash: this.hashToken(refreshToken),
       userId: user.id,
       expiresAt: new Date(Date.now() + this.refreshTokenTtlMs),
-    });
+    };
+    if (tx) await this.refreshTokenRepository.create(stored, tx);
+    else await this.refreshTokenRepository.create(stored);
 
     return {
       accessToken,
       refreshToken,
+      refreshExpiresAt: stored.expiresAt.toISOString(),
       expiresIn: await this.getAccessTokenTtlSeconds(accessToken),
     };
   }
@@ -64,42 +78,28 @@ export class TokenService {
    * Canjea un refresh token por un par nuevo (rotación).
    *
    * Incluye detección de reúso: si llega un token que ya fue canjeado, se
-   * asume que fue robado y se revoca la sesión completa del usuario.
+   * asume que fue robado y se revocan sus refresh tokens. Los JWT de acceso asociados también quedan invalidados.
    */
-  async rotate(refreshToken: string): Promise<{ user: User; tokens: TokenPair }> {
-    const stored = await this.refreshTokenRepository.findByTokenHashWithUser(
+  async rotate(
+    refreshToken: string,
+  ): Promise<{ user: User; tokens: TokenPair }> {
+    const result = await this.refreshTokenRepository.rotate(
       this.hashToken(refreshToken),
+      (user, tx, familyId) => this.issueTokenPair(user, tx, familyId),
     );
-
-    if (!stored) {
-      throw new UnauthorizedException('Refresh token inválido.');
-    }
-
-    if (stored.revokedAt !== null) {
-      await this.refreshTokenRepository.revokeAllForUser(stored.userId);
+    if (result.kind === 'rotated')
+      return { user: result.user, tokens: result.value };
+    if (result.kind === 'reused')
       throw new UnauthorizedException(
-        'Refresh token ya utilizado. Se cerraron todas las sesiones por seguridad.',
+        'Refresh token ya utilizado. Se revocaron los refresh tokens del usuario por seguridad.',
       );
-    }
-
-    if (stored.expiresAt.getTime() <= Date.now()) {
-      throw new UnauthorizedException('Refresh token expirado.');
-    }
-
-    if (!stored.user.isActive) {
-      throw new UnauthorizedException('La cuenta está inactiva.');
-    }
-
-    await this.refreshTokenRepository.revokeById(stored.id);
-
-    return {
-      user: stored.user,
-      tokens: await this.issueTokenPair(stored.user),
-    };
+    throw new UnauthorizedException(
+      'Refresh token inválido, expirado o cuenta inactiva.',
+    );
   }
 
   /**
-   * Revoca un refresh token puntual (logout).
+   * Revoca todos los tokens de la sesión (logout).
    *
    * Es idempotente a propósito: un logout con un token ya inválido igual
    * responde 204, así no se convierte en un oráculo para descubrir qué tokens
@@ -127,7 +127,7 @@ export class TokenService {
   private async getAccessTokenTtlSeconds(accessToken: string): Promise<number> {
     const decoded = await this.jwtService.verifyAsync<
       AccessTokenPayload & { exp: number; iat: number }
-    >(accessToken);
+    >(accessToken, ACCESS_TOKEN_POLICY);
     return decoded.exp - decoded.iat;
   }
 }

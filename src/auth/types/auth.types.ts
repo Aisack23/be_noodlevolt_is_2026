@@ -1,14 +1,35 @@
-/** Payload que viaja dentro del JWT de acceso. */
+import type { UserRole } from '@PrismaClient';
+
+/**
+ * Payload del JWT de acceso.
+ *
+ * El rol y la sucursal provienen del usuario
+ * persistido en PostgreSQL, nunca del cliente.
+ *
+ * branchId es null para CLIENT y GENERAL_MANAGER.
+ */
 export interface AccessTokenPayload {
-  /** ID del usuario (claim estándar `sub`). */
+  /** Identificador del usuario. */
   sub: string;
+  sid: string;
+
+  /** Correo electrónico del usuario. */
   email: string;
+
+  /** Rol asignado al usuario. */
+  role: UserRole;
+
+  /** Sucursal asignada, si corresponde. */
+  branchId: string | null;
 }
 
 /** Par de tokens devuelto por login y refresh. */
 export interface TokenPair {
   accessToken: string;
   refreshToken: string;
+  refreshExpiresAt: string;
+
   /** Vigencia del access token, en segundos. */
   expiresIn: number;
 }
+

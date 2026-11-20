@@ -1,4 +1,12 @@
-import { Body, Controller, Get, HttpCode, HttpStatus, Post } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  HttpCode,
+  HttpStatus,
+  Inject,
+  Post,
+} from '@nestjs/common';
 import {
   ApiBearerAuth,
   ApiNoContentResponse,
@@ -10,13 +18,13 @@ import {
 import { AuthService } from '@Auth/services';
 import { CurrentUser, Public } from '@Auth/decorators';
 import { AuthResponseDto, LoginDto, RefreshTokenDto } from '@Auth/dto';
-import { UserResponseDto } from '@Users/dto';
+import { SessionUserResponseDto } from '../dto/auth-response.dto.js';
 import type { User } from '@PrismaClient';
 
 @ApiTags('auth')
 @Controller('auth')
 export class AuthController {
-  constructor(private readonly authService: AuthService) {}
+  constructor(@Inject(AuthService) private readonly authService: AuthService) {}
 
   /**
    * Login. Responde 200 y no 201: no se crea un recurso direccionable, se
@@ -40,7 +48,9 @@ export class AuthController {
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Renueva el access token rotando el refresh token' })
   @ApiOkResponse({ type: AuthResponseDto })
-  @ApiUnauthorizedResponse({ description: 'Refresh token inválido, expirado o ya utilizado.' })
+  @ApiUnauthorizedResponse({
+    description: 'Refresh token inválido, expirado o ya utilizado.',
+  })
   async refresh(@Body() dto: RefreshTokenDto): Promise<AuthResponseDto> {
     const { user, tokens } = await this.authService.refresh(dto.refreshToken);
     return AuthResponseDto.from(user, tokens);
@@ -60,9 +70,11 @@ export class AuthController {
   @Get('me')
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Devuelve el usuario autenticado' })
-  @ApiOkResponse({ type: UserResponseDto })
-  @ApiUnauthorizedResponse({ description: 'Token ausente, inválido o expirado.' })
-  me(@CurrentUser() user: User): UserResponseDto {
-    return UserResponseDto.fromEntity(user);
+  @ApiOkResponse({ type: SessionUserResponseDto })
+  @ApiUnauthorizedResponse({
+    description: 'Token ausente, inválido o expirado.',
+  })
+  me(@CurrentUser() user: User): SessionUserResponseDto {
+    return SessionUserResponseDto.fromEntity(user);
   }
 }

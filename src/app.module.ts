@@ -1,3 +1,4 @@
+import { OrdersModule } from './orders/orders.module.js';
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { APP_GUARD } from '@nestjs/core';
@@ -7,19 +8,47 @@ import { HealthModule } from '@Health';
 import { PrismaModule } from '@Prisma';
 import { UsersModule } from '@Users';
 import { validateEnv } from '@Config';
+import { BranchesModule } from '@Branches';
+import { DiningTablesModule } from '@DiningTables';
+import { CatalogModule } from '@Catalog';
+import { InventoryModule } from '@Inventory';
+import { RecipesModule } from '@Recipes';
+import { AccountsOrdersModule } from '@AccountsOrders';
+import { ReservationsModule } from '@Reservations';
+import { PurchasesModule } from '@Purchase';
+import { PaymentsModule } from '@Payments';
+import { CustomerFeaturesModule } from '@CustomerFeatures';
+import { KitchenModule } from '@Kitchen';
+import { ReportsModule } from './reports/index.js';
+import { SecurityModule } from './security/security.module.js';
 
 @Module({
   imports: [
     ConfigModule.forRoot({
       isGlobal: true,
       cache: true,
+      ignoreEnvFile: process.env.NODE_ENV === 'production',
       // Si falta DATABASE_URL o JWT_SECRET, la app no arranca.
       validate: validateEnv,
     }),
     PrismaModule,
+    SecurityModule,
     HealthModule,
     UsersModule,
     AuthModule,
+    BranchesModule,
+    DiningTablesModule,
+    CatalogModule,
+    InventoryModule,
+    AccountsOrdersModule,
+    OrdersModule,
+    ReservationsModule,
+    PurchasesModule,
+    RecipesModule,
+    PaymentsModule,
+    CustomerFeaturesModule,
+    KitchenModule,
+    ReportsModule,
   ],
   providers: [
     {

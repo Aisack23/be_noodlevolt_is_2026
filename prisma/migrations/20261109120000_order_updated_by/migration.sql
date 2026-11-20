@@ -1,0 +1,5 @@
+BEGIN;
+ALTER TABLE orders ADD COLUMN updated_by UUID;
+ALTER TABLE orders ADD CONSTRAINT orders_updated_by_fkey
+  FOREIGN KEY (updated_by) REFERENCES users(id) ON DELETE SET NULL ON UPDATE CASCADE;
+COMMIT;

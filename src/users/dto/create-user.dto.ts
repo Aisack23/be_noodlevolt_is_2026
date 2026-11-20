@@ -1,8 +1,34 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsString, Matches, MaxLength, MinLength } from 'class-validator';
+import {
+  IsByteLength,
+  IsString,
+  Matches,
+  MaxLength,
+  MinLength,
+} from 'class-validator';
 import { IsNormalizedEmail } from '@Common/decorators';
 
 export class CreateUserDto {
+  @ApiProperty({
+    description: 'Nombre del usuario.',
+    example: 'Nestor',
+    maxLength: 100,
+  })
+  @IsString()
+  @MinLength(2)
+  @MaxLength(100)
+  name!: string;
+
+  @ApiProperty({
+    description: 'Apellido del usuario.',
+    example: 'Gonzalez',
+    maxLength: 100,
+  })
+  @IsString()
+  @MinLength(2)
+  @MaxLength(100)
+  lastName!: string;
+
   @ApiProperty({
     description: 'Email del usuario. Se normaliza a minúsculas y sin espacios.',
     example: 'nestor@example.com',
@@ -13,7 +39,8 @@ export class CreateUserDto {
   email!: string;
 
   @ApiProperty({
-    description: 'Contraseña. Debe incluir al menos una minúscula, una mayúscula y un número.',
+    description:
+      'Contraseña. Debe incluir al menos una minúscula, una mayúscula y un número.',
     example: 'Str0ngPass',
     minLength: 8,
     maxLength: 72,
@@ -21,9 +48,15 @@ export class CreateUserDto {
   @IsString()
   @MinLength(8, { message: 'La contraseña debe tener al menos 8 caracteres.' })
   // bcrypt trunca silenciosamente en 72 bytes, así que se rechaza antes de hashear.
-  @MaxLength(72, { message: 'La contraseña no puede superar los 72 caracteres.' })
+  @MaxLength(72, {
+    message: 'La contraseña no puede superar los 72 caracteres.',
+  })
+  @IsByteLength(1, 72, {
+    message: 'La contraseña no puede superar los 72 bytes UTF-8.',
+  })
   @Matches(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).+$/, {
-    message: 'La contraseña debe incluir al menos una minúscula, una mayúscula y un número.',
+    message:
+      'La contraseña debe incluir al menos una minúscula, una mayúscula y un número.',
   })
   password!: string;
 }

@@ -1,25 +1,19 @@
 import 'dotenv/config';
-import bcrypt from 'bcrypt';
 import { PrismaPg } from '@prisma/adapter-pg';
 import { PrismaClient } from '../src/generated/prisma/client.js';
-
-const DEMO_EMAIL = 'demo@example.com';
-const DEMO_PASSWORD = 'Demo1234!';
+import { seedBaseData } from './seeds/base-data.js';
+import { seedCatalogData } from './seeds/catalog-data.js';
+import { seedRewardProducts } from './seeds/reward-products-data.js';
 
 const adapter = new PrismaPg({ connectionString: process.env.DATABASE_URL });
 const prisma = new PrismaClient({ adapter });
 
 async function main() {
-  const passwordHash = await bcrypt.hash(DEMO_PASSWORD, 12);
+  await seedBaseData(prisma);
+  await seedCatalogData(prisma);
+  await seedRewardProducts(prisma);
 
-  // `upsert` hace el seed idempotente: se puede correr las veces que haga falta.
-  const user = await prisma.user.upsert({
-    where: { email: DEMO_EMAIL },
-    update: {},
-    create: { email: DEMO_EMAIL, passwordHash },
-  });
-
-  console.log(`Usuario demo listo: ${user.email} / ${DEMO_PASSWORD}`);
+  console.log('Datos base listos.');
 }
 
 try {

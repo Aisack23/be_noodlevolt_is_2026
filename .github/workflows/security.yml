@@ -1,0 +1,53 @@
+name: Seguridad del backend
+
+on:
+  pull_request:
+    branches: [develop, main]
+  push:
+    branches: ['security/**', 'release/**']
+
+permissions:
+  contents: read
+
+jobs:
+  security:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    services:
+      postgres:
+        image: postgres:18-alpine
+        env:
+          POSTGRES_USER: security_ci
+          POSTGRES_PASSWORD: ephemeral_ci_database
+          POSTGRES_DB: security_ci
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U security_ci -d security_ci"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      NODE_ENV: test
+      DATABASE_URL: postgresql://security_ci:ephemeral_ci_database@localhost:5432/security_ci?schema=public
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38
+        with:
+          node-version: '24'
+          cache: npm
+      - name: Generar secreto efímero del job
+        run: |
+          security_jwt_secret="$(openssl rand -hex 32)"
+          echo "::add-mask::$security_jwt_secret"
+          echo "JWT_SECRET=$security_jwt_secret" >> "$GITHUB_ENV"
+      - run: npm ci
+      - run: npm run prisma:deploy
+      - run: npx tsc --noEmit
+      - run: npm run build
+      - run: npm run lint
+      - run: npm test
+      - run: npm run test:e2e
+      - run: npm run test:migrations
+      - run: npm audit --audit-level=moderate

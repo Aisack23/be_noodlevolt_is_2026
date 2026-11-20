@@ -2,14 +2,20 @@ import {
   CanActivate,
   ExecutionContext,
   Injectable,
+  Inject,
   UnauthorizedException,
 } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { JwtService } from '@nestjs/jwt';
-import { UsersService } from '@Users/services';
+import { RefreshTokenRepository } from '@Auth/repositories';
 import { IS_PUBLIC_KEY } from '../decorators/public.decorator.js';
 import type { RequestWithUser } from '../decorators/current-user.decorator.js';
 import type { AccessTokenPayload } from '@Auth/types';
+import { isUUID } from 'class-validator';
+import {
+  ACCESS_TOKEN_MAX_SECONDS,
+  ACCESS_TOKEN_POLICY,
+} from '../types/access-token-policy.js';
 
 /**
  * Guard global: valida el Bearer token y carga el usuario en el request.
@@ -24,9 +30,9 @@ import type { AccessTokenPayload } from '@Auth/types';
 @Injectable()
 export class JwtAuthGuard implements CanActivate {
   constructor(
-    private readonly reflector: Reflector,
-    private readonly jwtService: JwtService,
-    private readonly usersService: UsersService,
+    @Inject(Reflector) private readonly reflector: Reflector,
+    @Inject(JwtService) private readonly jwtService: JwtService,
+    @Inject(RefreshTokenRepository) private readonly sessions: RefreshTokenRepository,
   ) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
@@ -45,7 +51,23 @@ export class JwtAuthGuard implements CanActivate {
 
     let payload: AccessTokenPayload;
     try {
-      payload = await this.jwtService.verifyAsync<AccessTokenPayload>(token);
+      const decoded = await this.jwtService.verifyAsync<
+        AccessTokenPayload & { iat?: number; exp?: number }
+      >(token, ACCESS_TOKEN_POLICY);
+      if (
+        typeof decoded.sub !== 'string' ||
+        !isUUID(decoded.sub) ||
+        typeof decoded.sid !== 'string' ||
+        !isUUID(decoded.sid) ||
+        !Number.isSafeInteger(decoded.iat) ||
+        !Number.isSafeInteger(decoded.exp) ||
+        decoded.iat! > Math.floor(Date.now() / 1000) + 5 ||
+        decoded.exp! <= decoded.iat! ||
+        decoded.exp! - decoded.iat! > ACCESS_TOKEN_MAX_SECONDS
+      ) {
+        throw new Error('Claims de acceso inválidos');
+      }
+      payload = decoded;
     } catch {
       // Cubre firma inválida, token expirado y token malformado por igual:
       // no conviene decirle al cliente cuál de los tres fue.
@@ -54,9 +76,9 @@ export class JwtAuthGuard implements CanActivate {
 
     // Se relee el usuario en cada request para que una cuenta desactivada o
     // eliminada deje de funcionar sin esperar a que expire el token.
-    const user = await this.usersService.findById(payload.sub);
-    if (!user || !user.isActive) {
-      throw new UnauthorizedException('La cuenta no existe o está inactiva.');
+    const user = await this.sessions.findActiveUser(payload.sid, payload.sub);
+    if (!user) {
+      throw new UnauthorizedException('La sesión ya no está activa.');
     }
 
     request.user = user;
@@ -64,8 +86,7 @@ export class JwtAuthGuard implements CanActivate {
   }
 
   private extractBearerToken(header: string | undefined): string | null {
-    if (!header) return null;
-    const [scheme, token] = header.split(' ');
-    return scheme?.toLowerCase() === 'bearer' && token ? token : null;
+    const match = /^Bearer ([^\s]+)$/i.exec(header ?? '');
+    return match && match[1].length <= 4096 ? match[1] : null;
   }
 }

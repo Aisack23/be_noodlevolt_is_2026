@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import { PrismaService } from '@Prisma/services';
 import { EmailAlreadyTakenError } from '@Users/errors';
 import { Prisma, type User } from '@PrismaClient';
@@ -9,6 +9,8 @@ const UNIQUE_CONSTRAINT_VIOLATION = 'P2002';
 export interface CreateUserData {
   email: string;
   passwordHash: string;
+  name: string;
+  lastName: string;
 }
 
 /**
@@ -21,7 +23,7 @@ export interface CreateUserData {
  */
 @Injectable()
 export class UserRepository {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(@Inject(PrismaService) private readonly prisma: PrismaService) {}
 
   /**
    * @throws {EmailAlreadyTakenError} si el email ya está registrado.
@@ -31,10 +33,20 @@ export class UserRepository {
    * insert. El código P2002 de Prisma se traduce a un error de dominio para
    * que la capa de servicio no tenga que conocer los códigos del ORM.
    */
-  async create({ email, passwordHash }: CreateUserData): Promise<User> {
+  async create({
+    email,
+    passwordHash,
+    name,
+    lastName,
+  }: CreateUserData): Promise<User> {
     try {
       return await this.prisma.user.create({
-        data: { email: this.normalizeEmail(email), passwordHash },
+        data: {
+          email: this.normalizeEmail(email),
+          passwordHash,
+          name,
+          lastName,
+        },
       });
     } catch (error) {
       if (

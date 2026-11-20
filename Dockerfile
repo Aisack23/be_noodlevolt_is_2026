@@ -37,9 +37,11 @@ COPY . .
 RUN npm run build
 
 # Se eliminan las devDependencies para copiar solo runtime a la imagen final.
-# Nota: `prisma`, `dotenv` y `tsx` son dependencies (no devDependencies) a
-# propósito, porque el contenedor corre `prisma migrate deploy` al arrancar y
-# `prisma db seed` a demanda; este prune se las llevaría.
+# Nota: `prisma` y `dotenv` son dependencies (no devDependencies) a propósito,
+# porque el contenedor corre `prisma migrate deploy` al arrancar. `tsx` es
+# devDependency y este prune lo elimina, así que `prisma db seed` no corre dentro
+# de la imagen: el seed se ejecuta desde una máquina de desarrollo (ver
+# docs/despliegue-pasos.md).
 RUN npm prune --omit=dev
 
 # --- Etapa 3: runtime ------------------------------------------------------
@@ -48,15 +50,15 @@ WORKDIR /app
 
 ENV NODE_ENV=production
 
-COPY --from=builder /app/node_modules ./node_modules
-COPY --from=builder /app/dist ./dist
-COPY --from=builder /app/package.json ./package.json
+COPY --from=builder --chown=node:node /app/node_modules ./node_modules
+COPY --from=builder --chown=node:node /app/dist ./dist
+COPY --from=builder --chown=node:node /app/package.json ./package.json
 # Necesarios para `prisma migrate deploy` al arrancar el contenedor.
-COPY --from=builder /app/prisma ./prisma
-COPY --from=builder /app/prisma.config.ts ./prisma.config.ts
+COPY --from=builder --chown=node:node /app/prisma ./prisma
+COPY --from=builder --chown=node:node /app/prisma.config.ts ./prisma.config.ts
 # El seed (`prisma db seed`) corre con tsx sobre prisma/seed.ts, que importa el
 # cliente generado desde src/, no desde dist/.
-COPY --from=builder /app/src/generated ./src/generated
+COPY --from=builder --chown=node:node /app/src/generated ./src/generated
 
 # La imagen de Node ya trae el usuario `node` sin privilegios.
 USER node

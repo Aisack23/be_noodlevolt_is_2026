@@ -1,27 +1,29 @@
-import { Injectable, UnauthorizedException } from '@nestjs/common';
-import bcrypt from 'bcrypt';
+import {
+  Inject,
+  Injectable,
+  UnauthorizedException,
+  type OnModuleInit,
+} from '@nestjs/common';
+import { randomBytes } from 'node:crypto';
 import { UsersService } from '@Users/services';
 import { TokenService } from './token.service.js';
 import type { LoginDto } from '@Auth/dto';
 import type { TokenPair } from '@Auth/types';
 import type { User } from '@PrismaClient';
 
-/**
- * Hash descartable con el que se compara cuando el email no existe.
- *
- * Sin esto, un login contra un email no registrado respondería muchísimo más
- * rápido que uno contra una cuenta real (no habría bcrypt de por medio), y esa
- * diferencia de tiempo permite enumerar qué emails están registrados.
- * Corresponde a un valor aleatorio; nunca va a matchear.
- */
-const DUMMY_HASH = '$2b$12$C6UzMDM.H6dfI/f/IKcEe.7ttRFZIqjvBeT3M1kRDRm1gy9cKr9Wy';
-
 @Injectable()
-export class AuthService {
+export class AuthService implements OnModuleInit {
+  private dummyHash!: string;
   constructor(
-    private readonly usersService: UsersService,
-    private readonly tokenService: TokenService,
+    @Inject(UsersService) private readonly usersService: UsersService,
+    @Inject(TokenService) private readonly tokenService: TokenService,
   ) {}
+
+  async onModuleInit(): Promise<void> {
+    this.dummyHash = await this.usersService.hashPassword(
+      randomBytes(32).toString('hex'),
+    );
+  }
 
   async login(dto: LoginDto): Promise<{ user: User; tokens: TokenPair }> {
     const user = await this.validateCredentials(dto.email, dto.password);
@@ -39,7 +41,7 @@ export class AuthService {
     const user = await this.usersService.findByEmail(email);
 
     if (!user) {
-      await bcrypt.compare(password, DUMMY_HASH);
+      await this.usersService.verifyPassword(password, this.dummyHash);
       throw new UnauthorizedException('Credenciales inválidas.');
     }
 
