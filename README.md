@@ -10,10 +10,10 @@ Equipo: **Elektro**.
 
 | Componente | Plataforma | URL | Rama |
 |---|---|---|---|
-| Frontend (Next.js) | Vercel | Pendiente de verificación HTTPS | `main` |
-| Backend (NestJS) | Render | Pendiente de verificación HTTPS | `main` |
+| Frontend (Next.js) | Render | [fe-noodlevolt-is-2026.onrender.com](https://fe-noodlevolt-is-2026.onrender.com) | `main` |
+| Backend (NestJS) | Render | [noodlevolt-api.onrender.com/api/v1](https://noodlevolt-api.onrender.com/api/v1) | `main` |
 | Base de datos (PostgreSQL) | Neon | Privada | — |
-| Swagger (solo si `SWAGGER_ENABLED=true`) | Render | Pendiente de verificación HTTPS | `main` |
+| Swagger (solo si `SWAGGER_ENABLED=true`) | Render | [noodlevolt-api.onrender.com/api/docs](https://noodlevolt-api.onrender.com/api/docs) | `main` |
 
 Los usuarios de prueba se entregan en Moodle, no en este repositorio.
 
