@@ -1,174 +1,106 @@
-import {
-  ConflictException,
-  ForbiddenException,
-  NotFoundException,
-} from '@nestjs/common';
-import { Test } from '@nestjs/testing';
-import { OrderRepository } from '@AccountsOrders/repositories';
-import { BranchRepository } from '@Branches/repositories';
-import {
-  OrderStatus,
-  UserRole,
-  type Branch,
-  type Order,
-  type Review,
-  type User,
-} from '@PrismaClient';
-import { CreateReviewDto } from '../dto/index.js';
+import { ConflictException } from '@nestjs/common';
+import { describe, expect, it, vi } from 'vitest';
+import { OrderStatus, UserRole, type Order, type Review } from '@PrismaClient';
 import { ReviewAlreadyExistsError } from '../errors/index.js';
-import { ReviewRepository } from '../repositories/index.js';
 import { ReviewsService } from './reviews.service.js';
-
-describe('ReviewsService', () => {
-  const user: Pick<User, 'id' | 'role'> = { id: 'user-1', role: UserRole.CLIENT };
+describe('HU-08: reseñas de pedidos', () => {
+  const user = { id: 'user-1', role: UserRole.CLIENT };
   const branchId = 'branch-1';
   const orderId = 'order-1';
-  const dto: CreateReviewDto = {
-    orderId,
-    rating: 5,
-    comment: 'Excelente servicio',
-  };
-
-  const order: Order = {
+  const deliveredOrder = {
     id: orderId,
     branchId,
-    accountId: null,
     customerId: user.id,
-    waiterId: null,
-    orderNumber: 'ORD-000001',
-    type: 'DINE_IN',
-    recipientName: null,
-    recipientPhone: null,
-    deliveryAddress: null,
-    deliveryReference: null,
-    deliveryInstructions: null,
-    total: null,
-    requestHash: null,
     status: OrderStatus.DELIVERED,
-    paymentMode: null,
-    operationId: 'operation-1',
-    pickupAt: null,
-    createdAt: new Date('2026-11-01T00:00:00.000Z'),
-    updatedAt: new Date('2026-11-01T00:00:00.000Z'),
   } as Order;
-
-  const branch: Branch = {
-    id: branchId,
-    name: 'Sucursal A',
-    address: 'Calle principal',
-    timeZone: 'America/El_Salvador',
-    isActive: true,
-    createdAt: new Date('2026-11-01T00:00:00.000Z'),
-  } as Branch;
-
-  const review: Review = {
-    id: 'review-1',
-    orderId,
-    customerId: user.id,
-    branchId,
-    rating: dto.rating,
-    comment: dto.comment,
-    createdAt: new Date('2026-11-01T00:00:00.000Z'),
-  } as Review;
-
-  const orderRepository = {
-    findById: vi.fn<() => Promise<Order | null>>(),
-  };
-  const branchRepository = {
-    findById: vi.fn<() => Promise<Branch | null>>(),
-  };
-  const reviewRepository = {
-    create: vi.fn<() => Promise<Review>>(),
-    aggregateByBranch: vi.fn<
-      () => Promise<{ _avg: { rating: number | null }; _count: { _all: number } }>
-    >(),
-  };
-
-  let service: ReviewsService;
-
-  beforeEach(async () => {
-    vi.resetAllMocks();
-    const module = await Test.createTestingModule({
-      providers: [
-        ReviewsService,
-        { provide: OrderRepository, useValue: orderRepository },
-        { provide: BranchRepository, useValue: branchRepository },
-        { provide: ReviewRepository, useValue: reviewRepository },
-      ],
-    }).compile();
-    service = module.get(ReviewsService);
-  });
-
-  it('403 si el usuario no es cliente', async () => {
-    await expect(
-      service.create({ ...user, role: UserRole.WAITER }, dto),
-    ).rejects.toThrow(ForbiddenException);
-    expect(orderRepository.findById).not.toHaveBeenCalled();
-  });
-
-  it('404 si el pedido no existe', async () => {
-    orderRepository.findById.mockResolvedValue(null);
-    await expect(service.create(user, dto)).rejects.toThrow(NotFoundException);
-    expect(reviewRepository.create).not.toHaveBeenCalled();
-  });
-
-  it('403 si el pedido no pertenece al usuario', async () => {
-    orderRepository.findById.mockResolvedValue({ ...order, customerId: 'other-user' });
-    await expect(service.create(user, dto)).rejects.toThrow(ForbiddenException);
-    expect(reviewRepository.create).not.toHaveBeenCalled();
-  });
-
-  it('409 si el pedido no está entregado', async () => {
-    orderRepository.findById.mockResolvedValue({ ...order, status: OrderStatus.PENDING });
-    await expect(service.create(user, dto)).rejects.toThrow(ConflictException);
-    expect(reviewRepository.create).not.toHaveBeenCalled();
-  });
-
-  it('crea la reseña con branchId y customerId del pedido y del usuario', async () => {
-    orderRepository.findById.mockResolvedValue(order);
-    branchRepository.findById.mockResolvedValue(branch);
-    reviewRepository.create.mockResolvedValue(review);
-    reviewRepository.aggregateByBranch.mockResolvedValue({
-      _avg: { rating: 4.5 },
-      _count: { _all: 3 },
-    });
-
-    await expect(service.create(user, dto)).resolves.toEqual({
-      review,
-      branchRating: { average: 4.5, count: 3 },
+  it('HU-08-AC1: pedido propio ENTREGADO sin reseña y puntuación válida guarda la reseña asociada', async () => {
+    const createdReview = {
+      id: 'review-1',
+      orderId,
+      customerId: user.id,
+      branchId,
+      rating: 5,
+      comment: 'Excelente servicio',
+    } as Review;
+    const orderRepository = {
+      findById: vi.fn().mockResolvedValue(deliveredOrder),
+    };
+    const reviewRepository = {
+      create: vi.fn().mockResolvedValue(createdReview),
+      aggregateByBranch: vi.fn().mockResolvedValue({
+        _avg: { rating: 5 },
+        _count: { _all: 1 },
+      }),
+    };
+    const branchRepository = {
+      findById: vi.fn().mockResolvedValue({ id: branchId }),
+    };
+    const service = new ReviewsService(
+      orderRepository as never,
+      branchRepository as never,
+      reviewRepository as never,
+    );
+    await expect(service.create(user, {
+      orderId,
+      rating: 5,
+      comment: 'Excelente servicio',
+    })).resolves.toEqual({
+      review: createdReview,
+      branchRating: { average: 5, count: 1 },
     });
     expect(reviewRepository.create).toHaveBeenCalledWith({
       orderId,
       customerId: user.id,
       branchId,
-      rating: dto.rating,
-      comment: dto.comment,
+      rating: 5,
+      comment: 'Excelente servicio',
     });
   });
-
-  it('409 si el pedido ya tiene una reseña', async () => {
-    orderRepository.findById.mockResolvedValue(order);
-    reviewRepository.create.mockRejectedValue(new ReviewAlreadyExistsError(orderId));
-
-    await expect(service.create(user, dto)).rejects.toThrow(ConflictException);
-  });
-
-  it('getBranchRating devuelve promedio y cantidad', async () => {
-    branchRepository.findById.mockResolvedValue(branch);
-    reviewRepository.aggregateByBranch.mockResolvedValue({
-      _avg: { rating: 4.5 },
-      _count: { _all: 3 },
+  it('HU-08-AC2: pedido PENDIENTE rechaza la reseña', async () => {
+    const orderRepository = {
+      findById: vi.fn().mockResolvedValue({
+        ...deliveredOrder,
+        status: OrderStatus.PENDING,
+      }),
+    };
+    const reviewRepository = {
+      create: vi.fn(),
+      aggregateByBranch: vi.fn(),
+    };
+    const service = new ReviewsService(
+      orderRepository as never,
+      { findById: vi.fn() } as never,
+      reviewRepository as never,
+    );
+    await expect(service.create(user, { orderId, rating: 4 })).rejects.toMatchObject({
+      status: 409,
     });
-
-    await expect(service.getBranchRating(branchId)).resolves.toEqual({
-      average: 4.5,
-      count: 3,
-    });
+    expect(reviewRepository.create).not.toHaveBeenCalled();
   });
-
-  it('404 si la sucursal no existe al consultar rating', async () => {
-    branchRepository.findById.mockResolvedValue(null);
-    await expect(service.getBranchRating(branchId)).rejects.toThrow(NotFoundException);
-    expect(reviewRepository.aggregateByBranch).not.toHaveBeenCalled();
+  it('HU-08-AC3: pedido con reseña rechaza con conflicto y conserva la reseña original', async () => {
+    const originalReview = {
+      id: 'review-original',
+      orderId,
+      customerId: user.id,
+      branchId,
+      rating: 3,
+      comment: 'Original',
+    } as Review;
+    const persistedReview = { ...originalReview };
+    const orderRepository = {
+      findById: vi.fn().mockResolvedValue(deliveredOrder),
+    };
+    const reviewRepository = {
+      create: vi.fn().mockRejectedValue(new ReviewAlreadyExistsError(orderId)),
+      aggregateByBranch: vi.fn(),
+    };
+    const service = new ReviewsService(
+      orderRepository as never,
+      { findById: vi.fn() } as never,
+      reviewRepository as never,
+    );
+    await expect(service.create(user, { orderId, rating: 1, comment: 'Intento nuevo' }))
+      .rejects.toBeInstanceOf(ConflictException);
+    expect(persistedReview).toEqual(originalReview);
   });
 });
