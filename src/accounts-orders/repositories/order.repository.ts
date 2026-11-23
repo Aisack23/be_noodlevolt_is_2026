@@ -10,6 +10,8 @@ import {
   OrderItemStatus,
   OrderStatus,
   OrderType,
+  type PaymentMode,
+  type PaymentStatus,
   Prisma,
 } from '@PrismaClient';
 import { PrismaService } from '@Prisma/services';
@@ -18,6 +20,9 @@ export interface CustomerOrderListRow {
   id: string;
   orderNumber: string;
   status: OrderStatus;
+  type: OrderType;
+  paymentMode: PaymentMode | null;
+  payments: { status: PaymentStatus }[];
   total: Prisma.Decimal | null;
   createdAt: Date;
   branchId: string;
@@ -136,6 +141,15 @@ export class OrderRepository {
         id: true,
         orderNumber: true,
         status: true,
+        type: true,
+        paymentMode: true,
+        payments: {
+          where: { status: { in: ['PAID', 'REJECTED'] } },
+          // En el enum de PostgreSQL PAID va antes de REJECTED.
+          orderBy: { status: 'asc' },
+          take: 1,
+          select: { status: true },
+        },
         total: true,
         createdAt: true,
         branchId: true,

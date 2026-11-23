@@ -27,15 +27,19 @@ describe('BE-11: reseñas contra PostgreSQL', () => {
     return id;
   }
 
-  async function createUser(name: string, role: 'CLIENT' | 'WAITER' = 'CLIENT') {
+  async function createUser(
+    name: string,
+    role: 'CLIENT' | 'WAITER' | 'BRANCH_ADMIN' | 'GENERAL_MANAGER' = 'CLIENT',
+    branchId: string | null = null,
+  ) {
     const id = randomUUID();
     userIds.push(id);
     const email = `${randomUUID()}@example.com`;
     const passwordHash = await hash(password, 4);
     await client.query(
-      `INSERT INTO users (id,name,email,password_hash,role,updated_at)
-       VALUES ($1,$2,$3,$4,$5::"UserRole", now())`,
-      [id, name, email, passwordHash, role],
+      `INSERT INTO users (id,name,email,password_hash,role,branch_id,updated_at)
+       VALUES ($1,$2,$3,$4,$5::"UserRole",$6,now())`,
+      [id, name, email, passwordHash, role, branchId],
     );
     return { id, email };
   }
@@ -136,6 +140,53 @@ describe('BE-11: reseñas contra PostgreSQL', () => {
       comment: 'Excelente servicio',
     });
     expect(response.body.branchRating).toEqual({ average: 5, count: 1 });
+  });
+
+  it('lista reseñas paginadas de la sucursal autorizada con datos mínimos', async () => {
+    const branchA = await createBranch('reviews-centro');
+    const branchB = await createBranch('reviews-santa-tecla');
+    const customer = await createUser('cliente-reviews');
+    const manager = await createUser('gerente-centro', 'BRANCH_ADMIN', branchA);
+    const general = await createUser('gerente-general', 'GENERAL_MANAGER');
+    const customerToken = await login(customer.email);
+    const managerToken = await login(manager.email);
+    const generalToken = await login(general.email);
+    const list = (branchId: string, page = 1) => request(app.getHttpServer())
+      .get(`/api/v1/branches/${branchId}/reviews`)
+      .query({ page, limit: 1 });
+
+    const reviews = [
+      { branchId: branchA, comment: 'Primera reseña de Centro' },
+      { branchId: branchA, comment: 'Segunda reseña de Centro' },
+      { branchId: branchB, comment: 'Reseña de Santa Tecla' },
+    ];
+    for (const { branchId, comment } of reviews) {
+      const orderId = await createOrder(branchId, customer.id);
+      await reviewRequest(customerToken, { orderId, rating: 4, comment }).expect(201);
+    }
+
+    await list(branchA).expect(401);
+    await list(branchA).auth(customerToken, { type: 'bearer' }).expect(403);
+    await list(branchB).auth(managerToken, { type: 'bearer' }).expect(403);
+
+    const firstPage = await list(branchA).auth(managerToken, { type: 'bearer' }).expect(200);
+    expect(firstPage.body).toEqual({
+      items: [{
+        id: expect.any(String),
+        rating: 4,
+        comment: 'Segunda reseña de Centro',
+        createdAt: expect.any(String),
+      }],
+      total: 2,
+      page: 1,
+      limit: 1,
+    });
+    const secondPage = await list(branchA, 2).auth(generalToken, { type: 'bearer' }).expect(200);
+    expect(secondPage.body.items[0].comment).toBe('Primera reseña de Centro');
+    const otherBranch = await list(branchB).auth(generalToken, { type: 'bearer' }).expect(200);
+    expect(otherBranch.body.items[0].comment).toBe('Reseña de Santa Tecla');
+    await list(branchA, 0).auth(generalToken, { type: 'bearer' }).expect(400);
+    await list(randomUUID()).auth(generalToken, { type: 'bearer' }).expect(404);
   });
 
   it.each([

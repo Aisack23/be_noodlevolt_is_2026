@@ -124,6 +124,14 @@ describe('BE-06: endpoint y persistencia Prisma reales', () => {
       .send({ orderId, cardToken });
   }
 
+  async function readOrder() {
+    const response = await request(app!.getHttpServer())
+      .get('/api/v1/orders/me')
+      .set('Authorization', `Bearer ${token}`)
+      .expect(200);
+    return response.body.find((order: { id: string }) => order.id === orderId);
+  }
+
   it.each(['DINE_IN', 'DELIVERY'])(
     'rechaza pedido propio %s sin registrar pagos ni comprobantes',
     async (type) => {
@@ -152,6 +160,7 @@ describe('BE-06: endpoint y persistencia Prisma reales', () => {
   });
 
   it('conserva rechazo y permite aprobar con un único comprobante no fiscal', async () => {
+    expect(await readOrder()).toMatchObject({ status: 'PENDING', paymentStatus: 'PENDING' });
     const rejected = await post('test_0002').expect(201);
     expect(rejected.body).toMatchObject({
       status: 'RECHAZADO',
@@ -163,6 +172,7 @@ describe('BE-06: endpoint y persistencia Prisma reales', () => {
       [orderId],
     );
     expect(unpaid.rows[0].status).toBe('PENDING');
+    expect(await readOrder()).toMatchObject({ status: 'PENDING', paymentStatus: 'REJECTED' });
     const receipts = await client!.query(
       'SELECT count(*)::int AS count FROM simple_receipts r JOIN payments p ON p.id=r.payment_id WHERE p.order_id=$1',
       [orderId],
@@ -174,6 +184,7 @@ describe('BE-06: endpoint y persistencia Prisma reales', () => {
       amount: '17.00',
       receipt: { amount: '17.00' },
     });
+    expect(await readOrder()).toMatchObject({ status: 'PENDING', paymentStatus: 'PAID' });
     const rows = await client!.query(
       'SELECT status,last4,total_paid::text FROM payments WHERE order_id=$1 ORDER BY total_paid',
       [orderId],
@@ -183,6 +194,10 @@ describe('BE-06: endpoint y persistencia Prisma reales', () => {
       { status: 'PAID', last4: '4242', total_paid: '17.00' },
     ]);
   }, 10000);
+  it('un pedido para pagar en caja carece de estado de pago en línea', async () => {
+    await client!.query("UPDATE orders SET payment_mode='AT_COUNTER' WHERE id=$1", [orderId]);
+    expect(await readOrder()).toMatchObject({ status: 'PENDING', paymentStatus: null });
+  });
   it('rechaza segundo cobro después de aprobar y no duplica comprobantes', async () => {
     await post().expect(201);
     await post().expect(409);

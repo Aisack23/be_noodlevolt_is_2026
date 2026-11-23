@@ -7,6 +7,7 @@ import {
   Param,
   ParseUUIDPipe,
   Post,
+  Query,
   Res,
 } from '@nestjs/common';
 import {
@@ -25,6 +26,8 @@ import {
 import type { Response } from 'express';
 import type { User } from '@PrismaClient';
 import { CurrentUser, Public } from '@Auth/decorators';
+import { PageQueryDto } from '../../common/dto/page-query.dto.js';
+import { BranchReviewsPageDto } from '../dto/branch-reviews-page.dto.js';
 import { CreateReviewDto } from '../dto/index.js';
 import { ReviewsService } from '../services/index.js';
 
@@ -117,6 +120,23 @@ export class ReviewsController {
 @Controller('branches')
 export class BranchesReviewsController {
   constructor(@Inject(ReviewsService) private readonly service: ReviewsService) {}
+
+  @ApiBearerAuth()
+  @Get(':id/reviews')
+  @ApiOperation({ summary: 'Lista las reseñas de una sucursal para gerencia.' })
+  @ApiOkResponse({ type: BranchReviewsPageDto })
+  @ApiUnauthorizedResponse({ description: 'Falta una sesión válida.' })
+  @ApiForbiddenResponse({
+    description: 'El rol o la sucursal están fuera del ámbito del usuario.',
+  })
+  @ApiNotFoundResponse({ description: 'La sucursal no existe.' })
+  listForBranch(
+    @CurrentUser() user: User,
+    @Param('id', branchIdPipe) branchId: string,
+    @Query() query: PageQueryDto,
+  ): Promise<BranchReviewsPageDto> {
+    return this.service.listForBranch(user, branchId, query);
+  }
 
   @Public()
   @Get(':id/rating')

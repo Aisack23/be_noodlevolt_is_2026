@@ -74,6 +74,25 @@ export class ReviewRepository {
     });
   }
 
+  async listForBranch(branchId: string, page: number, limit: number) {
+    const where = { branchId };
+    const [items, total] = await this.prisma.$transaction(
+      [
+        this.prisma.review.findMany({
+          where,
+          orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+          skip: (page - 1) * limit,
+          take: limit,
+          select: { id: true, rating: true, comment: true, createdAt: true },
+        }),
+        this.prisma.review.count({ where }),
+      ],
+      { isolationLevel: 'RepeatableRead' },
+    );
+
+    return { items, total, page, limit };
+  }
+
   findByBranchAndRating(
     branchId: string,
     rating: number,

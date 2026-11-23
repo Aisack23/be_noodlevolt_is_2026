@@ -18,6 +18,13 @@ export class MyOrderResponseDto {
   @ApiProperty({ enum: ['PENDING_PAYMENT', 'PENDING', 'CONFIRMED', 'IN_PREPARATION', 'READY', 'DELIVERED', 'CANCELED'] })
   status!: string;
 
+  @ApiProperty({
+    type: String,
+    enum: ['PENDING', 'REJECTED', 'PAID'],
+    nullable: true,
+  })
+  paymentStatus!: 'PENDING' | 'REJECTED' | 'PAID' | null;
+
   @ApiProperty({ example: '125.50' })
   total!: string;
 
