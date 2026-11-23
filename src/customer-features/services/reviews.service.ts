@@ -8,6 +8,8 @@ import {
 import { OrderRepository } from '@AccountsOrders/repositories';
 import { BranchRepository } from '@Branches/repositories';
 import { OrderStatus, type Review, type User, UserRole } from '@PrismaClient';
+import type { PageQueryDto } from '../../common/dto/page-query.dto.js';
+import type { BranchReviewsPageDto } from '../dto/branch-reviews-page.dto.js';
 import { CreateReviewDto } from '../dto/index.js';
 import { ReviewAlreadyExistsError } from '../errors/index.js';
 import { ReviewRepository } from '../repositories/index.js';
@@ -70,5 +72,25 @@ export class ReviewsService {
       average: aggregate._avg.rating ?? null,
       count: aggregate._count._all,
     };
+  }
+
+  async listForBranch(
+    actor: Pick<User, 'role' | 'branchId'>,
+    branchId: string,
+    { page, limit }: PageQueryDto,
+  ): Promise<BranchReviewsPageDto> {
+    if (
+      actor.role !== UserRole.GENERAL_MANAGER &&
+      !(actor.role === UserRole.BRANCH_ADMIN && actor.branchId === branchId)
+    ) {
+      throw new ForbiddenException(
+        'No tienes permiso para consultar las reseñas de esta sucursal.',
+      );
+    }
+
+    const branch = await this.branchRepository.findById(branchId);
+    if (!branch) throw new NotFoundException('La sucursal no existe.');
+
+    return this.reviewRepository.listForBranch(branchId, page, limit);
   }
 }

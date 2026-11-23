@@ -75,6 +75,7 @@ Los roles se validan en los servicios. Ver [02 · Arquitectura](02-arquitectura.
 | GET | `/branches/:branchId/tables` | Lista mesas de la sucursal. | Personal de la sucursal o GENERAL_MANAGER |
 | GET | `/branches/:branchId/tables/:id` | Consulta una mesa y su salón. | Personal de la sucursal o GENERAL_MANAGER |
 | GET | `/branches/:id/rating` | Promedio y cantidad de reseñas de la sucursal. | Público |
+| GET | `/branches/:id/reviews` | Lista paginada de reseñas, ordenadas de más recientes a más antiguas. Devuelve ID de reseña, calificación, comentario y fecha. | GERENTE de esa sucursal, GERENTE_GENERAL |
 
 ### Menú y platillos
 
@@ -89,7 +90,9 @@ Los roles se validan en los servicios. Ver [02 · Arquitectura](02-arquitectura.
 |---|---|---|---|
 | POST | `/orders` | Registra un pedido para llevar. Total calculado en el servidor. Usa `operationKey` para evitar duplicados en reintentos; `expectedPrice` opcional detecta cambios de precio con 409. Exige sucursal abierta. | CLIENT |
 | POST | `/orders/salon` | Registra un pedido de salón para una mesa. | WAITER de la sucursal |
-| GET | `/orders/me` | Lista los pedidos propios. | CLIENT |
+| GET | `/orders/me` | Lista los pedidos propios con `paymentStatus` para el pago en línea. | CLIENT |
+
+`paymentStatus` indica `PENDING`, `REJECTED` o `PAID`. Vale `null` cuando el pedido carece de modalidad de pago en línea. El estado operativo `status` sigue su propio flujo.
 
 ### Cocina
 
